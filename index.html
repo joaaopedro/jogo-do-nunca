@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Jogo do Impossível</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>O Jogo do Nunca</h1>
+        <p class="subtitle">Tente clicar no botão se conseguir... 😈</p>
+        
+        <button id="evasiveBtn" class="evasive-button">CLIQUE AQUI!</button>
+        
+        <div class="info">
+            <p>⚠️ Aviso: Seu mouse está sendo traidor...</p>
+            <p>Cliques falhados: <span id="failCount">0</span></p>
+        </div>
+    </div>
+
+    <div id="fakeCursor"></div>
+    <div id="trollMessage" class="troll-message"></div>
+    <div id="floatingText" class="floating-text"></div>
+
+    <div id="victoryModal" class="victory-modal">
+        <div class="victory-content">
+            <h2>🎉 PARABÉNS! 🎉</h2>
+            <p>VOCÊ CONSEGUIU CLICAR NO BOTÃO!</p>
+            <div class="victory-stats">
+                <p>Cliques falhados: <span id="victoryFailCount">0</span></p>
+                <p>Você é um HERÓI! 🏆</p>
+            </div>
+            <button id="restartBtn" class="restart-btn">RECOMEÇAR</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

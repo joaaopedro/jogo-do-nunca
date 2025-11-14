@@ -1,0 +1,297 @@
+const evasiveBtn = document.getElementById('evasiveBtn');
+const fakeCursor = document.getElementById('fakeCursor');
+const failCountDisplay = document.getElementById('failCount');
+const trollMessage = document.getElementById('trollMessage');
+const victoryModal = document.getElementById('victoryModal');
+const victoryFailCount = document.getElementById('victoryFailCount');
+const restartBtn = document.getElementById('restartBtn');
+
+let realMouseX = 0;
+let realMouseY = 0;
+let failCount = 0;
+let isInvertedX = true;
+let isInvertedY = true;
+let buttonSpeed = 1;
+let gameActive = true;
+let shiftPressed = false;
+let ctrlPressed = false;
+
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
+
+const trollMessages = [
+    '😈 Quase!',
+    '🤔 Errou!',
+    '⚡ Tá longe!',
+    '💀 Boa tentativa',
+    '🎪 Escapa dele!',
+    '🚀 Muito lento!',
+    '🌪️ Virou areia!',
+    '🎯 Errou o alvo!',
+    '😂 Continua tentando',
+    '🔥 Tá pegando fogo!',
+    '👻 Fantasminha esperto',
+    '🎭 Tá difícil né?',
+];
+
+const floatingMessages = [
+    'Kkk',
+    'Virou areia!',
+    'Escapou!',
+    'Ué?',
+    'Nope!',
+    'Errou!',
+    'Tá bravinho?',
+];
+
+// Detectar SHIFT sendo pressionado
+document.addEventListener('keydown', (e) => {
+    if (e.shiftKey) {
+        shiftPressed = true;
+    }
+    if (e.ctrlKey) {
+        ctrlPressed = true;
+    }
+});
+
+// Detectar SHIFT sendo solto
+document.addEventListener('keyup', (e) => {
+    if (!e.shiftKey) {
+        shiftPressed = false;
+    }
+    if (!e.ctrlKey) {
+        ctrlPressed = false;
+    }
+});
+
+// Rastrear a posição real do mouse
+document.addEventListener('mousemove', (e) => {
+    if (!gameActive) return;
+
+    realMouseX = e.clientX;
+    realMouseY = e.clientY;
+
+    // Inverter a posição do mouse (efeito trolleador)
+    let invertedX = isInvertedX ? windowWidth - realMouseX : realMouseX;
+    let invertedY = isInvertedY ? windowHeight - realMouseY : realMouseY;
+
+    // Se SHIFT estiver pressionado, mostrar posição real
+    if (shiftPressed) {
+        invertedX = realMouseX;
+        invertedY = realMouseY;
+    }
+
+    // Mostrar o "cursor falso" na posição invertida
+    fakeCursor.style.left = (invertedX - 15) + 'px';
+    fakeCursor.style.top = (invertedY - 15) + 'px';
+    fakeCursor.style.display = 'block';
+
+    // Mover o botão se o mouse estiver muito perto
+    const btnRect = evasiveBtn.getBoundingClientRect();
+    const btnCenterX = btnRect.left + btnRect.width / 2;
+    const btnCenterY = btnRect.top + btnRect.height / 2;
+
+    const distX = invertedX - btnCenterX;
+    const distY = invertedY - btnCenterY;
+    const distance = Math.sqrt(distX * distX + distY * distY);
+
+    // Se o cursor estiver a menos de 150px do botão, ele escapa
+    if (distance < 150 && !ctrlPressed) {
+        moveButtonAway();
+    }
+});
+
+// Ao passar o mouse sobre o botão com a posição invertida, ele também escapa
+evasiveBtn.addEventListener('mouseenter', () => {
+    if (gameActive && !ctrlPressed) moveButtonAway();
+});
+
+// Se conseguir clicar (por algum milagre!)
+evasiveBtn.addEventListener('click', (e) => {
+    if (gameActive) {
+        e.preventDefault();
+        e.stopPropagation();
+        celebrateClick();
+    }
+});
+
+// Trolagem: Inverter controles aleatoricamente
+setInterval(() => {
+    if (!gameActive) return;
+    if (Math.random() < 0.05) { // 5% de chance a cada segundo
+        const shouldInvertX = Math.random() > 0.5;
+        if (shouldInvertX) {
+            isInvertedX = !isInvertedX;
+            showTrollMessage('🔄 Inversão X ativada!');
+        } else {
+            isInvertedY = !isInvertedY;
+            showTrollMessage('🔄 Inversão Y ativada!');
+        }
+    }
+}, 1000);
+
+// Trolagem: Aumentar velocidade de escape do botão com o tempo
+setInterval(() => {
+    if (!gameActive) return;
+    buttonSpeed = Math.min(buttonSpeed + 0.1, 3);
+}, 3000);
+
+// Botão de recomeçar
+restartBtn.addEventListener('click', () => {
+    location.reload();
+});
+
+function moveButtonAway() {
+    if (!gameActive) return;
+
+    failCount++;
+    failCountDisplay.textContent = failCount;
+
+    // Mostrar mensagem troll aleatória
+    if (failCount % 3 === 0) {
+        showTrollMessage(trollMessages[Math.floor(Math.random() * trollMessages.length)]);
+    }
+
+    // Fazer o botão tremendo aleatoricamente
+    if (Math.random() > 0.7) {
+        evasiveBtn.style.animation = 'shake 0.3s ease-in-out';
+        setTimeout(() => {
+            evasiveBtn.style.animation = '';
+        }, 300);
+    }
+
+    // Gerar posição aleatória dentro da viewport, evitando a borda
+    const maxX = windowWidth - 200;
+    const maxY = windowHeight - 100;
+    const minX = 100;
+    const minY = 100;
+
+    // Aumentar velocidade de movimento
+    const randomX = Math.random() * (maxX - minX) + minX;
+    const randomY = Math.random() * (maxY - minY) + minY;
+
+    evasiveBtn.style.position = 'fixed';
+    evasiveBtn.style.transition = `all ${0.3 / buttonSpeed}s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+    evasiveBtn.style.left = randomX + 'px';
+    evasiveBtn.style.top = randomY + 'px';
+
+    // Trolagem: Virar o botão
+    if (Math.random() > 0.8) {
+        evasiveBtn.style.transform = `rotate(${Math.random() * 360}deg)`;
+    }
+
+    // Trolagem: Mudar cor do botão aleatoricamente
+    if (Math.random() > 0.7) {
+        const colors = [
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+        ];
+        evasiveBtn.style.background = colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // Adicionar floating text
+    if (failCount % 2 === 0) {
+        const floatMsg = floatingMessages[Math.floor(Math.random() * floatingMessages.length)];
+        createFloatingText(floatMsg);
+    }
+
+    // Efeito glitch a cada 5 tentativas
+    if (failCount % 5 === 0) {
+        evasiveBtn.classList.add('glitch');
+        setTimeout(() => {
+            evasiveBtn.classList.remove('glitch');
+        }, 500);
+    }
+
+    // Aumentar size do botão após 10 cliques falhados
+    if (failCount > 10) {
+        evasiveBtn.style.transform = `scale(${0.7 + failCount * 0.02})`;
+    }
+}
+
+function showTrollMessage(message) {
+    trollMessage.textContent = message;
+    trollMessage.classList.add('show');
+    
+    setTimeout(() => {
+        trollMessage.classList.remove('show');
+    }, 2000);
+}
+
+function createFloatingText(text) {
+    const floatingText = document.createElement('div');
+    floatingText.className = 'floating-text';
+    floatingText.textContent = text;
+    
+    const randomX = Math.random() * (windowWidth - 100) + 50;
+    const randomY = Math.random() * (windowHeight - 100) + 50;
+    
+    floatingText.style.left = randomX + 'px';
+    floatingText.style.top = randomY + 'px';
+    floatingText.style.color = [
+        '#ff6b6b',
+        '#4ecdc4',
+        '#ffe66d',
+        '#ff6348',
+        '#95e1d3',
+    ][Math.floor(Math.random() * 5)];
+    
+    document.body.appendChild(floatingText);
+    
+    setTimeout(() => floatingText.remove(), 2000);
+}
+
+function celebrateClick() {
+    gameActive = false;
+
+    // Criar explosão de emojis
+    const emojis = ['🎉', '🎊', '✨', '🎈', '🎁', '🏆', '👏', '🌟', '💥', '⚡'];
+    
+    for (let i = 0; i < 30; i++) {
+        const emoji = document.createElement('div');
+        emoji.className = 'celebration';
+        emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        emoji.style.left = (Math.random() * 100) + '%';
+        emoji.style.top = (Math.random() * 100) + '%';
+        document.body.appendChild(emoji);
+
+        setTimeout(() => emoji.remove(), 1500);
+    }
+
+    // Mostrar modal de vitória
+    victoryFailCount.textContent = failCount;
+    victoryModal.classList.add('show');
+    
+    // Mostrar o mouse ao aparecer o modal
+    document.body.classList.add('show-victory');
+
+    // Som de vitória (usando Web Audio)
+    playVictorySound();
+}
+
+function playVictorySound() {
+    // Criar som de vitória simples com Web Audio API
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 659.25, 783.99]; // Do, Mi, Sol
+        
+        notes.forEach((freq, idx) => {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            oscillator.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime + idx * 0.1);
+            oscillator.stop(audioContext.currentTime + idx * 0.1 + 0.2);
+        });
+    } catch (e) {
+        // Ignorar erro se Web Audio não estiver disponível
+    }
+}
