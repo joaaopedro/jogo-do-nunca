@@ -4,6 +4,11 @@ const trollMessage = document.getElementById('trollMessage');
 const victoryModal = document.getElementById('victoryModal');
 const restartBtn = document.getElementById('restartBtn');
 
+// ===== ADMIN PASSWORD (SHA-256 hash) =====
+// Senha: JpGv1209
+// Hash SHA-256: d23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7
+const ADMIN_PASSWORD_HASH = 'd23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7';
+
 let realMouseX = 0;
 let realMouseY = 0;
 let proximityCounter = 0;
@@ -44,6 +49,15 @@ const floatingMessages = [
     'Nope! Hoje não é dia de click feliz.',
     'Errou! Mas a graça tá na tentativa, não no resultado.',
 ];
+
+// ===== SHA-256 Hash Function =====
+async function sha256(str) {
+    const buf = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buf);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
 
 // Elementos do novo fluxo/start
 const startModal = document.getElementById('startModal');
@@ -208,26 +222,29 @@ window.addEventListener('load', () => {
     
     // F1: Falar apenas visitas GLOBAIS
     // Ctrl+F1: Pedir senha para resetar o Top 10
-    window.addEventListener('keydown', (e) => {
+    window.addEventListener('keydown', async (e) => {
         if (e.key === 'F1') {
             // prevenir comportamento padrão (help)
             e.preventDefault();
             
-            // Ctrl+F1: Reset com senha
+            // Ctrl+F1: Reset com senha (criptografada)
             if (e.ctrlKey) {
                 const senha = prompt('Digite a senha para resetar o Top 10:');
-                if (senha === '120912') {
-                    // Resetar Top 10 local
+                if (senha !== null) {
                     try {
-                        localStorage.removeItem('jogoDoNunca_leaderboard_v1');
-                        alert('✅ Top 10 resetado com sucesso!');
-                        // Recarregar para refletir as mudanças
-                        setTimeout(() => location.reload(), 500);
+                        const senhaHash = await sha256(senha);
+                        if (senhaHash === ADMIN_PASSWORD_HASH) {
+                            // Resetar Top 10 local
+                            localStorage.removeItem('jogoDoNunca_leaderboard_v1');
+                            alert('✅ Top 10 resetado com sucesso!');
+                            // Recarregar para refletir as mudanças
+                            setTimeout(() => location.reload(), 500);
+                        } else {
+                            alert('❌ Senha incorreta!');
+                        }
                     } catch (err) {
-                        alert('❌ Erro ao resetar o Top 10');
+                        alert('❌ Erro ao verificar senha');
                     }
-                } else if (senha !== null) {
-                    alert('❌ Senha incorreta!');
                 }
                 return;
             }
