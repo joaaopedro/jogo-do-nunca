@@ -45,6 +45,45 @@ const floatingMessages = [
     'Tá bravinho? Respira, tenta outra vez, guerreiro.',
 ];
 
+// GIFs na pasta imagens (ex: imagens/risos.gif, imagens/triste.gif)
+const gifFiles = [
+    './imagens/risos.gif',
+    './imagens/triste.gif'
+];
+
+/** Spawnar um GIF em um canto aleatório por um curto período */
+function spawnCornerGif() {
+    // escolher arquivo
+    const file = gifFiles[Math.floor(Math.random() * gifFiles.length)];
+    const img = document.createElement('img');
+    img.src = file;
+    img.className = 'corner-gif';
+
+    // Cantos possíveis
+    const corners = [
+        { top: '12px', left: '12px' },
+        { top: '12px', right: '12px' },
+        { bottom: '12px', left: '12px' },
+        { bottom: '12px', right: '12px' }
+    ];
+    const corner = corners[Math.floor(Math.random() * corners.length)];
+    Object.assign(img.style, corner);
+
+    // Leve variação de escala/posição para evitar sobreposição exata
+    const scale = 0.85 + Math.random() * 0.4; // 0.85 - 1.25
+    img.style.transform = `scale(${scale})`;
+
+    document.body.appendChild(img);
+
+    // tempo aleatório de exibição (1.2s - 2.8s)
+    const display = Math.random() * 1600 + 1200;
+    setTimeout(() => {
+        img.style.opacity = '0';
+        img.style.transform = `scale(${scale * 0.95}) translateY(-6px)`;
+        setTimeout(() => img.remove(), 300);
+    }, display);
+}
+
 // Detectar SHIFT sendo pressionado
 document.addEventListener('keydown', (e) => {
     if (e.shiftKey) {
@@ -138,6 +177,10 @@ document.addEventListener('click', (e) => {
     if (failCount % 5 === 0) {
         evasiveBtn.classList.add('glitch');
         setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
+    }
+    // spawn pequeno de GIFs em cantos quando houver falhas
+    if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
+        spawnCornerGif();
     }
 }, true);
 
@@ -234,6 +277,11 @@ function moveButtonAway() {
     // Aumentar size do botão após 10 aproximações (não confundir com cliques)
     if (proximityCounter > 10) {
         evasiveBtn.style.transform = `scale(${0.7 + proximityCounter * 0.02})`;
+    }
+
+    // Spawnar GIFs nos cantos com chance que aumenta com a proximidade acumulada
+    if (Math.random() < Math.min(0.15 + proximityCounter * 0.01, 0.6)) {
+        spawnCornerGif();
     }
 }
 

@@ -295,3 +295,19 @@ h1 {
 .restart-btn:active {
     transform: scale(0.95);
 }
+
+/* GIFs que aparecem nos cantos como reação */
+.corner-gif {
+    position: fixed;
+    width: 110px;
+    max-width: 22vw;
+    pointer-events: none;
+    z-index: 10003;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform-origin: center;
+}
+
+@media (max-width: 600px) {
+    .corner-gif { width: 80px; }
+}
