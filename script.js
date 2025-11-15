@@ -207,10 +207,32 @@ window.addEventListener('load', () => {
     })();
     
     // F1: Falar apenas visitas GLOBAIS
+    // Ctrl+F1: Pedir senha para resetar o Top 10
     window.addEventListener('keydown', (e) => {
         if (e.key === 'F1') {
             // prevenir comportamento padrão (help)
             e.preventDefault();
+            
+            // Ctrl+F1: Reset com senha
+            if (e.ctrlKey) {
+                const senha = prompt('Digite a senha para resetar o Top 10:');
+                if (senha === '120912') {
+                    // Resetar Top 10 local
+                    try {
+                        localStorage.removeItem('jogoDoNunca_leaderboard_v1');
+                        alert('✅ Top 10 resetado com sucesso!');
+                        // Recarregar para refletir as mudanças
+                        setTimeout(() => location.reload(), 500);
+                    } catch (err) {
+                        alert('❌ Erro ao resetar o Top 10');
+                    }
+                } else if (senha !== null) {
+                    alert('❌ Senha incorreta!');
+                }
+                return;
+            }
+            
+            // F1 normal: Falar visitas globais
             try {
                 const visitas = window.globalVisits || 'desconhecido';
                 const msg = `Visitas globais: ${visitas}.`;
