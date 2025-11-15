@@ -1,21 +1,21 @@
 const evasiveBtn = document.getElementById('evasiveBtn');
 const fakeCursor = document.getElementById('fakeCursor');
-const failCountDisplay = document.getElementById('failCount');
 const trollMessage = document.getElementById('trollMessage');
 const victoryModal = document.getElementById('victoryModal');
-const victoryFailCount = document.getElementById('victoryFailCount');
 const restartBtn = document.getElementById('restartBtn');
 
 let realMouseX = 0;
 let realMouseY = 0;
-let failCount = 0;
 let proximityCounter = 0;
 let isInvertedX = true;
 let isInvertedY = true;
 let buttonSpeed = 1;
-let gameActive = true;
+let gameActive = false;
 let shiftPressed = false;
 let ctrlPressed = false;
+
+// Debug flag ativada via hash '#debug'
+const CLICK_DEBUG = (typeof window !== 'undefined' && window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1);
 
 // Ler dimensões dinamicamente (ajuda quando a janela é redimensionada)
 function getWindowWidth() { return window.innerWidth; }
@@ -43,10 +43,116 @@ const floatingMessages = [
     'Ué? Cadê o botão? Nem eu sei.',
     'Nope! Hoje não é dia de click feliz.',
     'Errou! Mas a graça tá na tentativa, não no resultado.',
-    'Tá bravinho? Respira, tenta outra vez, guerreiro.',
 ];
 
-// GIFs na pasta imagens — atualizados para os nomes presentes no projeto
+// Elementos do novo fluxo/start
+const startModal = document.getElementById('startModal');
+const playerNameInput = document.getElementById('playerNameInput');
+const startGameBtn = document.getElementById('startGameBtn');
+const victoryTimeDisplay = document.getElementById('victoryTimeDisplay');
+const leaderboardEl = document.getElementById('leaderboard');
+const bgCatcher = document.getElementById('bgCatcher');
+const liveTimer = document.getElementById('liveTimer');
+
+// Timer / jogador
+let playerName = '';
+let startTime = null;
+let elapsedMs = 0;
+
+// Leaderboard key
+const LB_KEY = 'jogoDoNunca_leaderboard_v1';
+
+function formatTime(ms) {
+    if (!ms && ms !== 0) return '--:--.---';
+    const total = Math.max(0, Math.floor(ms));
+    const minutes = Math.floor(total / 60000);
+    const seconds = Math.floor((total % 60000) / 1000);
+    const millis = total % 1000;
+    return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
+}
+
+function loadLeaderboard() {
+    try {
+        const raw = localStorage.getItem(LB_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch (e) { return []; }
+}
+
+function saveLeaderboard(entries) {
+    try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch (e) { /* ignore */ }
+}
+
+function saveScore(name, ms) {
+    const entries = loadLeaderboard();
+    entries.push({ name: name || '—', timeMs: ms, at: new Date().toISOString() });
+    entries.sort((a,b) => a.timeMs - b.timeMs);
+    const top = entries.slice(0, 10);
+    saveLeaderboard(top);
+    return top;
+}
+
+function renderLeaderboard() {
+    const entries = loadLeaderboard();
+    if (!leaderboardEl) return;
+    if (!entries || entries.length === 0) {
+        leaderboardEl.innerHTML = '<div class="row">Nenhum resultado ainda — seja o primeiro!</div>';
+        return;
+    }
+    const html = entries.map((e,i) => {
+        return `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`;
+    }).join('');
+    leaderboardEl.innerHTML = html;
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
+// Start button handler
+if (startGameBtn) startGameBtn.addEventListener('click', () => {
+    const val = (playerNameInput && playerNameInput.value) ? playerNameInput.value.trim() : '';
+    playerName = val || 'Jogador';
+    try { localStorage.setItem('jogoDoNunca_lastName', playerName); } catch (e) {}
+    // iniciar jogo
+    startModal.style.display = 'none';
+    startTime = Date.now();
+    elapsedMs = 0;
+    proximityCounter = 0;
+    buttonSpeed = 1;
+    gameActive = true;
+});
+
+// Auto-focus input and prefill last name
+window.addEventListener('load', () => {
+    try {
+        const last = localStorage.getItem('jogoDoNunca_lastName');
+        if (last && playerNameInput) playerNameInput.value = last;
+    } catch (e) {}
+    if (playerNameInput) playerNameInput.focus();
+    // render leaderboard initially (shows previous results)
+    renderLeaderboard();
+    // start the live timer loop
+    requestAnimationFrame(tick);
+});
+
+// atualiza o timer em tempo real quando o jogo está ativo
+function tick() {
+    try {
+        if (liveTimer) {
+            if (gameActive && startTime) {
+                const now = Date.now();
+                const ms = now - startTime;
+                liveTimer.textContent = `Tempo: ${formatTime(ms)}`;
+            } else if (!gameActive && elapsedMs) {
+                liveTimer.textContent = `Tempo: ${formatTime(elapsedMs)}`;
+            } else {
+                liveTimer.textContent = 'Tempo: --:--.---';
+            }
+        }
+    } catch (e) {}
+    requestAnimationFrame(tick);
+}
+
+// Lista de GIFs disponíveis (pasta imagens/)
 const gifFiles = [
     'imagens/risos1.gif',
     'imagens/risos2.gif',
@@ -54,37 +160,66 @@ const gifFiles = [
     'imagens/triste2.gif'
 ];
 
-/** Spawnar um GIF em um canto aleatório por um curto período */
+// controlar quantos GIFs estão ativos por canto para evitar sobreposição
+const cornerCounts = { tl: 0, tr: 0, bl: 0, br: 0 };
+const MAX_PER_CORNER = 4; // empilhar até 4 antes de usar outro canto
+
+// Função que spawn um GIF no canto, evitando sobreposição usando contadores por canto
 function spawnCornerGif() {
-    // escolher arquivo
-    const file = gifFiles[Math.floor(Math.random() * gifFiles.length)];
-    const img = document.createElement('img');
-    img.src = file;
-    img.className = 'corner-gif';
+    try {
+        const file = gifFiles[Math.floor(Math.random() * gifFiles.length)];
+        const img = document.createElement('img');
+        img.src = file;
+        img.className = 'corner-gif';
 
-    // Cantos possíveis
-    const corners = [
-        { top: '12px', left: '12px' },
-        { top: '12px', right: '12px' },
-        { bottom: '12px', left: '12px' },
-        { bottom: '12px', right: '12px' }
-    ];
-    const corner = corners[Math.floor(Math.random() * corners.length)];
-    Object.assign(img.style, corner);
+        // Cantos possíveis com chaves e estilos base
+        const CORNER_DEFS = [
+            { key: 'tl', style: { top: '12px', left: '12px' }, dirX: 1, dirY: 1 },
+            { key: 'tr', style: { top: '12px', right: '12px' }, dirX: -1, dirY: 1 },
+            { key: 'bl', style: { bottom: '12px', left: '12px' }, dirX: 1, dirY: -1 },
+            { key: 'br', style: { bottom: '12px', right: '12px' }, dirX: -1, dirY: -1 }
+        ];
 
-    // Leve variação de escala/posição para evitar sobreposição exata
-    const scale = 0.85 + Math.random() * 0.4; // 0.85 - 1.25
-    img.style.transform = `scale(${scale})`;
+        // Escolher canto preferencialmente com menos itens
+        let cornerDef = CORNER_DEFS[Math.floor(Math.random() * CORNER_DEFS.length)];
+        if (cornerCounts[cornerDef.key] >= MAX_PER_CORNER) {
+            cornerDef = CORNER_DEFS.reduce((minC, c) => cornerCounts[c.key] < cornerCounts[minC.key] ? c : minC, CORNER_DEFS[0]);
+        }
 
-    document.body.appendChild(img);
+        // registrar
+        cornerCounts[cornerDef.key] = (cornerCounts[cornerDef.key] || 0) + 1;
+        img.dataset.corner = cornerDef.key;
 
-    // tempo aleatório de exibição (1.2s - 2.8s)
-    const display = Math.random() * 1600 + 1200;
-    setTimeout(() => {
-        img.style.opacity = '0';
-        img.style.transform = `scale(${scale * 0.95}) translateY(-6px)`;
-        setTimeout(() => img.remove(), 300);
-    }, display);
+        // aplicar estilo base
+        Object.assign(img.style, cornerDef.style);
+
+        // deslocamento incremental para empilhar sem sobreposição exata
+        const slotIndex = cornerCounts[cornerDef.key] - 1; // 0-based
+        const offset = 12 + slotIndex * 18; // px
+        const translateX = cornerDef.dirX * offset;
+        const translateY = cornerDef.dirY * offset;
+
+        const scale = 0.85 + Math.random() * 0.4;
+        img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+        document.body.appendChild(img);
+
+        const display = Math.random() * 1600 + 1200;
+        setTimeout(() => {
+            img.style.opacity = '0';
+            img.style.transform = `translate(${translateX}px, ${translateY - 6}px) scale(${scale * 0.95})`;
+            setTimeout(() => {
+                try {
+                    const k = img.dataset.corner;
+                    if (k && cornerCounts[k]) cornerCounts[k] = Math.max(0, cornerCounts[k] - 1);
+                } catch (err) {}
+                img.remove();
+            }, 300);
+        }, display);
+    } catch (err) {
+        // se algo falhar, não quebrar a execução
+        console.warn('spawnCornerGif error', err);
+    }
 }
 
 // Detectar SHIFT sendo pressionado
@@ -106,6 +241,7 @@ document.addEventListener('keyup', (e) => {
         ctrlPressed = false;
     }
 });
+
 
 // Rastrear a posição real do mouse
 document.addEventListener('mousemove', (e) => {
@@ -224,9 +360,12 @@ function handlePointerDown(e) {
         time: Date.now(),
         button: (typeof e.button === 'number') ? e.button : null
     };
+    if (CLICK_DEBUG) console.debug('[CLICK_DEBUG] pendingMouseDown set', pendingMouseDown);
     // limpar pending se não houver mouseup em 1.2s
     if (pendingMouseDownTimeout) clearTimeout(pendingMouseDownTimeout);
-    pendingMouseDownTimeout = setTimeout(() => { pendingMouseDown = null; pendingMouseDownTimeout = null; }, 1200);
+    pendingMouseDownTimeout = setTimeout(() => {
+        if (CLICK_DEBUG) console.debug('[CLICK_DEBUG] pendingMouseDown timed out -> clearing', pendingMouseDown);
+        pendingMouseDown = null; pendingMouseDownTimeout = null; }, 1200);
 }
 
 // estado de mousedown pendente para validar no mouseup
@@ -263,21 +402,21 @@ function handleMouseUp(e) {
     }
 
     if (downOutside && upOutside) {
-        // é um clique falhado do mouse
-        failCount++;
-        failCountDisplay.textContent = failCount;
+        // é um clique falhado do mouse — incrementar contador de proximidade/erros internos (não mostrado)
+        if (CLICK_DEBUG) console.debug('[CLICK_DEBUG] counting failed click (hidden), pending:', pendingMouseDown, 'up:', {x: upX, y: upY, button: e.button, isTrusted: e.isTrusted});
+        proximityCounter++;
 
-        // dar feedback sutil quando houver falha
-        if (failCount % 2 === 0) {
+        // dar feedback sutil quando houver falha (usar proximityCounter como gatilho)
+        if (proximityCounter % 2 === 0) {
             createFloatingText(floatingMessages[Math.floor(Math.random() * floatingMessages.length)]);
         }
-        if (failCount % 5 === 0) {
+        if (proximityCounter % 5 === 0) {
             evasiveBtn.classList.add('glitch');
             setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
         }
 
         // spawn pequeno de GIFs em cantos quando houver falhas
-        if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
+        if (Math.random() < Math.min(0.12 + proximityCounter * 0.01, 0.5)) {
             spawnCornerGif();
         }
     }
@@ -287,10 +426,15 @@ function handleMouseUp(e) {
     if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
 }
 
-// Anexar handler: usar somente 'mousedown' (evita alterações por pointer events e duplicação)
-// Não usar capture para reduzir a chance de interceptar eventos inesperados.
-const handlerOptions = { capture: false };
-document.addEventListener('mousedown', handlePointerDown, handlerOptions);
+// Anexar handler: em vez de ouvir no documento inteiro, ouvir apenas cliques no "fundo"
+// (bgCatcher). Isso garante que cliques no painel ou no botão não sejam capturados.
+bgCatcher.addEventListener('mousedown', function (e) {
+    // reutilizar a lógica principal do handler, mas apenas quando o fundo for clicado
+    handlePointerDown(e);
+}, false);
+
+// Ouvir mouseup globalmente para validar o pendingMouseDown (mouseup pode ocorrer em qualquer lugar)
+window.addEventListener('mouseup', handleMouseUp, false);
 
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
@@ -441,6 +585,22 @@ function createFloatingText(text) {
 function celebrateClick() {
     gameActive = false;
 
+    // parar timer e registrar tempo
+    if (startTime) {
+        elapsedMs = Date.now() - startTime;
+    }
+
+    // salvar no leaderboard e renderizar
+    try {
+        saveScore(playerName || 'Jogador', elapsedMs);
+        renderLeaderboard();
+    } catch (e) {}
+
+    // Mostrar tempo no modal
+    if (victoryTimeDisplay) {
+        victoryTimeDisplay.textContent = `Tempo: ${formatTime(elapsedMs)}`;
+    }
+
     // Criar explosão de emojis
     const emojis = ['🎉', '🎊', '✨', '🎈', '🎁', '🏆', '👏', '🌟', '💥', '⚡'];
     
@@ -456,7 +616,6 @@ function celebrateClick() {
     }
 
     // Mostrar modal de vitória
-    victoryFailCount.textContent = failCount;
     victoryModal.classList.add('show');
     
     // Mostrar o mouse ao aparecer o modal

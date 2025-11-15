@@ -30,6 +30,17 @@ body.show-victory {
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     max-width: 500px;
+    position: relative;
+    z-index: 2; /* manter acima do bgCatcher */
+}
+
+/* elemento invisível que captura cliques no fundo da página */
+#bgCatcher {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    z-index: 1;
+    pointer-events: auto;
 }
 
 h1 {
@@ -310,4 +321,79 @@ h1 {
 
 @media (max-width: 600px) {
     .corner-gif { width: 80px; }
+}
+
+/* Start modal (pedir nome) */
+.start-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.65));
+    z-index: 10005;
+}
+.start-content {
+    background: white;
+    padding: 28px 36px;
+    border-radius: 14px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.start-content h2 { margin-bottom: 6px; color: #333; }
+.start-content p { margin-bottom: 14px; color: #555; }
+#playerNameInput {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1em;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    margin-bottom: 12px;
+}
+.start-btn {
+    padding: 10px 26px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Leaderboard inside victory modal */
+.leaderboard {
+    margin-top: 12px;
+    background: rgba(255,255,255,0.08);
+    padding: 10px;
+    border-radius: 10px;
+    max-height: 260px;
+    overflow: auto;
+    color: white;
+}
+.leaderboard .row { display:flex; justify-content:space-between; padding:6px 8px; align-items:center; }
+.leaderboard .row:nth-child(odd) { background: rgba(255,255,255,0.03); }
+.leaderboard .rank { font-weight: 800; width: 36px; }
+.leaderboard .name { flex:1; padding-left: 8px; }
+.leaderboard .time { font-variant-numeric: tabular-nums; min-width: 80px; text-align:right; }
+
+/* Garantir que o cursor real apareça quando o modal de início estiver visível */
+.start-modal, .start-content, #playerNameInput, .start-btn {
+    cursor: auto !important;
+}
+
+/* Live timer visível durante o jogo */
+.live-timer {
+    position: absolute; /* ficar dentro do .container */
+    top: 18px;
+    right: 140px;
+    z-index: 4; /* acima do conteúdo do container */
+    background: rgba(255,255,255,0.95);
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    pointer-events: none;
 }
