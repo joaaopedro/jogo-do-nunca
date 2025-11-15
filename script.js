@@ -5,7 +5,6 @@ const victoryModal = document.getElementById('victoryModal');
 const restartBtn = document.getElementById('restartBtn');
 
 // ===== ADMIN PASSWORD (SHA-256 hash) =====
-// Senha: JpGv1209
 // Hash SHA-256: d23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7
 const ADMIN_PASSWORD_HASH = 'd23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7';
 
@@ -178,7 +177,10 @@ async function fetchGlobalStats() {
 
 // Reset global do leaderboard no servidor (tenta vários endpoints, métodos e formatos)
 async function resetGlobalLeaderboard(passwordHash) {
-    if (!API_BASE) return { ok: false, message: 'API_BASE não configurado' };
+    if (!API_BASE) {
+        console.log('[RESET] API_BASE não configurado, apenas reset local');
+        return { ok: false, message: 'Servidor não configurado (apenas local)' };
+    }
 
     const paths = [
         '/admin/reset-leaderboard',
@@ -190,65 +192,81 @@ async function resetGlobalLeaderboard(passwordHash) {
         '/reset'
     ];
 
-    const makeBody = (extra = {}) => JSON.stringify(Object.assign({ passwordHash, action: 'reset' }, extra));
+    const makeBody = (extra = {}) => JSON.stringify(Object.assign({ 
+        passwordHash, 
+        password: passwordHash, 
+        adminPassword: passwordHash, 
+        action: 'reset' 
+    }, extra));
 
-    // Combinações de tentativas
     const attempts = [];
     for (const p of paths) {
         attempts.push({ method: 'POST', path: p, body: makeBody() });
-        attempts.push({ method: 'POST', path: p, body: makeBody({ ts: Date.now() }) });
         attempts.push({ method: 'DELETE', path: p, body: makeBody() });
-        attempts.push({ method: 'DELETE', path: p }); // sem body
-        // querystring fallback (alguns backends só leem query)
-        attempts.push({ method: 'POST', path: `${p}?passwordHash=${encodeURIComponent(passwordHash)}` });
-        attempts.push({ method: 'GET', path: `${p}?passwordHash=${encodeURIComponent(passwordHash)}` });
     }
 
-    const baseHeaders = Object.assign({ 'Content-Type': 'application/json', 'x-admin-pass-sha256': passwordHash }, buildAuthHeaders());
+    const baseHeaders = Object.assign({ 
+        'Content-Type': 'application/json', 
+        'x-admin-pass-sha256': passwordHash,
+        'x-admin-password': passwordHash 
+    }, buildAuthHeaders());
+    
     const errors = [];
+    const isDebug = window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1;
+    let hasCorsError = false;
 
     for (const a of attempts) {
         try {
+            if (isDebug) console.log('[RESET_TRY]', a.method, API_BASE + a.path);
+            
             const res = await fetch(`${API_BASE}${a.path}`, {
                 method: a.method,
                 headers: baseHeaders,
                 body: a.body,
                 mode: 'cors',
-                credentials: 'include' // permite cookies se o backend usar sessão
+                credentials: 'include'
             });
+            
+            if (isDebug) console.log('[RESET_RESPONSE]', a.method, a.path, 'status:', res.status);
+            
             if (res.ok || res.status === 204) {
-                if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
-                    console.debug('[RESET_OK]', a.method, a.path, res.status);
-                }
+                if (isDebug) console.log('[RESET_SUCCESS]', a.method, a.path);
                 return { ok: true };
+            } else if (res.status === 404) {
+                // 404 é esperado, continua tentando outros endpoints
+                continue;
             } else {
                 let detail = `HTTP ${res.status}`;
                 try {
                     const ct = res.headers.get('content-type') || '';
                     if (ct.includes('application/json')) {
                         const j = await res.json();
-                        if (j && (j.message || j.error)) detail = j.message || j.error;
-                    } else {
-                        const t = await res.text();
-                        if (t) detail = t.slice(0, 300);
+                        if (j && (j.message || j.error)) detail += ` - ${j.message || j.error}`;
                     }
                 } catch (_) {}
-                errors.push(`${a.method} ${a.path} -> ${detail}`);
-                if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
-                    console.debug('[RESET_FAIL]', a.method, a.path, detail);
-                }
+                errors.push(detail);
+                if (isDebug) console.log('[RESET_ERROR]', detail);
             }
         } catch (err) {
-            const msg = (err && err.message) ? err.message : 'erro de rede';
-            errors.push(`${a.method} ${a.path} -> ${msg}`);
-            if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
-                console.debug('[RESET_ERR]', a.method, a.path, msg);
+            if (err.name === 'TypeError' && err.message.toLowerCase().includes('fetch')) {
+                hasCorsError = true;
+                if (isDebug) console.error('[RESET_CORS]', a.method, a.path, err.message);
+            } else {
+                if (isDebug) console.error('[RESET_EXCEPTION]', a.method, a.path, err);
             }
         }
     }
 
-    // Retorna o último erro resumido e mantém os detalhes no console com #debug
-    return { ok: false, message: errors[errors.length - 1] || 'Nenhuma tentativa obteve sucesso' };
+    let finalMsg;
+    if (hasCorsError) {
+        finalMsg = 'Servidor bloqueou a requisição (CORS). Configure o servidor para aceitar requisições do frontend.';
+    } else if (errors.length > 0) {
+        finalMsg = `Endpoint não encontrado ou erro: ${errors[0]}`;
+    } else {
+        finalMsg = 'Nenhum endpoint de reset disponível no servidor.';
+    }
+    
+    return { ok: false, message: finalMsg };
 }
 
 // Timer / jogador
@@ -396,41 +414,57 @@ window.addEventListener('load', () => {
     // Ctrl+F1: Pedir senha para resetar o Top 10
     window.addEventListener('keydown', async (e) => {
         if (e.key === 'F1') {
-            // prevenir comportamento padrão (help)
             e.preventDefault();
             e.stopPropagation();
             
-            // Ctrl+F1: Reset com senha (criptografada)
-            // Verificar Ctrl (Windows/Linux) ou Cmd (Mac)
             const isCtrlPressed = e.ctrlKey || e.metaKey;
+            
             if (isCtrlPressed) {
                 console.log('[DEBUG] Ctrl+F1 detectado');
                 const senha = prompt('Digite a senha para resetar o Top 10:');
-                if (senha !== null) {
+                
+                if (senha !== null && senha !== '') {
                     try {
                         const senhaHash = await sha256(senha);
+                        
                         if (senhaHash === ADMIN_PASSWORD_HASH) {
+                            console.log('[DEBUG] Senha correta! Resetando...');
+                            
+                            // SEMPRE reseta local primeiro
+                            try { 
+                                localStorage.removeItem(LB_KEY);
+                                console.log('[DEBUG] ✅ Ranking local resetado');
+                            } catch (err) {
+                                console.error('[DEBUG] ❌ Erro ao resetar local:', err);
+                            }
+                            
+                            // Tenta resetar no servidor (mas não falha se não conseguir)
                             let serverMsg = '';
-                            let ok = false;
+                            let serverOk = false;
                             if (API_BASE) {
+                                console.log('[DEBUG] Tentando resetar servidor...');
                                 const res = await resetGlobalLeaderboard(senhaHash);
-                                ok = !!res.ok;
+                                serverOk = !!res.ok;
                                 serverMsg = res.message || '';
+                                console.log('[DEBUG] Servidor:', serverOk ? '✅ sucesso' : '⚠️ ' + serverMsg);
                             }
-                            try { localStorage.removeItem(LB_KEY); } catch (_) {}
-                            if (ok) {
-                                alert('✅ Top 10 global resetado com sucesso!');
+                            
+                            // Mensagem de sucesso sempre menciona o reset local
+                            if (serverOk) {
+                                alert('✅ Top 10 resetado com sucesso!\n\n• Local: resetado\n• Servidor: resetado');
                             } else if (API_BASE) {
-                                alert(`⚠️ Não foi possível resetar o ranking global no servidor.\nO ranking local foi resetado.\nDetalhes: ${serverMsg || 'falha na requisição'}`);
+                                alert(`✅ Top 10 LOCAL resetado com sucesso!\n\n⚠️ Servidor: ${serverMsg}\n\n(O ranking local foi limpo. Configure o servidor se precisar de reset global.)`);
                             } else {
-                                alert('✅ Top 10 local resetado. (Servidor não configurado)');
+                                alert('✅ Top 10 local resetado com sucesso!\n\n(Servidor não configurado - apenas reset local)');
                             }
+                            
                             setTimeout(() => location.reload(), 700);
                         } else {
                             alert('❌ Senha incorreta!');
                         }
                     } catch (err) {
-                        alert('❌ Erro ao verificar senha');
+                        console.error('[DEBUG] Erro:', err);
+                        alert('❌ Erro: ' + err.message);
                     }
                 }
                 return;
@@ -450,7 +484,7 @@ window.addEventListener('load', () => {
                     alert(msg);
                 }
             } catch (err) {
-                // fallback simples
+                console.error('[DEBUG] Erro ao falar visitas:', err);
                 alert('Não foi possível recuperar o contador de visitas globais.');
             }
         }
