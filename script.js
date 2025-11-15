@@ -216,7 +216,7 @@ window.addEventListener('load', () => {
             try {
                 const key = 'jogoDoNunca_visits_device';
                 const n = localStorage.getItem(key) || '0';
-                const msg = `Visitas neste dispositivo: ${n}. Atenção: contagem global de usuários exige servidor.`;
+                const msg = `Visitas neste dispositivo: ${n}.`;
                 if (window.speechSynthesis) {
                     const u = new SpeechSynthesisUtterance(msg);
                     // ajustar voz/volume se quiser
