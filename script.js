@@ -53,7 +53,6 @@ const victoryTimeDisplay = document.getElementById('victoryTimeDisplay');
 const leaderboardEl = document.getElementById('leaderboard');
 const bgCatcher = document.getElementById('bgCatcher');
 const liveTimer = document.getElementById('liveTimer');
-const visitInfoEl = document.getElementById('visitInfo');
 
 // API base (defina window.API_BASE = 'https://seu-servidor' em index.html se quiser usar o servidor)
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
@@ -176,29 +175,17 @@ window.addEventListener('load', () => {
     renderLeaderboard();
     // start the live timer loop
     requestAnimationFrame(tick);
-    // registrar visita neste dispositivo e atualizar badge
-    try {
-        const key = 'jogoDoNunca_visits_device';
-        let n = parseInt(localStorage.getItem(key) || '0', 10);
-        n = (isNaN(n) ? 0 : n) + 1;
-        localStorage.setItem(key, String(n));
-        const vi = document.getElementById('visitInfo');
-        if (vi) vi.textContent = `Visitas neste dispositivo: ${n}`;
-    } catch (err) {}
-    // tentar também notificar o servidor (global count) e obter stats
+    
+    // tentar obter visitas globais do servidor
     (async () => {
         try {
-            const serverVisits = await sendVisitToServer();
-            if (serverVisits != null && visitInfoEl) {
-                visitInfoEl.textContent = `Visitas globais (contagem): ${serverVisits}`;
-            } else if (visitInfoEl) {
-                // se sem servidor, manter o contador local
-                const key = 'jogoDoNunca_visits_device';
-                visitInfoEl.textContent = `Visitas neste dispositivo: ${localStorage.getItem(key) || '0'}`;
-            }
-
-            // se servidor disponível, também preencher leaderboard global
             const stats = await fetchGlobalStats();
+            if (stats && stats.visits != null) {
+                // armazenar visitas globais para usar no F1
+                window.globalVisits = stats.visits;
+            }
+            
+            // se servidor disponível, também preencher leaderboard global
             if (stats && stats.leaderboard && Array.isArray(stats.leaderboard)) {
                 // renderizar leaderboard global (substitui o local one)
                 if (leaderboardEl) {
@@ -208,18 +195,27 @@ window.addEventListener('load', () => {
             }
         } catch (e) {}
     })();
-    // Falar o número de visitas ao pressionar F1 (apenas local, por dispositivo)
+    
+    // Registrar visita no servidor (incrementa contador global)
+    (async () => {
+        try {
+            const serverVisits = await sendVisitToServer();
+            if (serverVisits != null) {
+                window.globalVisits = serverVisits;
+            }
+        } catch (e) {}
+    })();
+    
+    // F1: Falar apenas visitas GLOBAIS
     window.addEventListener('keydown', (e) => {
         if (e.key === 'F1') {
             // prevenir comportamento padrão (help)
             e.preventDefault();
             try {
-                const key = 'jogoDoNunca_visits_device';
-                const n = localStorage.getItem(key) || '0';
-                const msg = `Visitas neste dispositivo: ${n}.`;
+                const visitas = window.globalVisits || 'desconhecido';
+                const msg = `Visitas globais: ${visitas}.`;
                 if (window.speechSynthesis) {
                     const u = new SpeechSynthesisUtterance(msg);
-                    // ajustar voz/volume se quiser
                     u.lang = 'pt-BR';
                     speechSynthesis.cancel();
                     speechSynthesis.speak(u);
@@ -228,7 +224,7 @@ window.addEventListener('load', () => {
                 }
             } catch (err) {
                 // fallback simples
-                alert('Não foi possível recuperar o contador de visitas.');
+                alert('Não foi possível recuperar o contador de visitas globais.');
             }
         }
     }, false);
@@ -262,11 +258,22 @@ const gifFiles = [
 
 // controlar quantos GIFs estão ativos por canto para evitar sobreposição
 const cornerCounts = { tl: 0, tr: 0, bl: 0, br: 0 };
-const MAX_PER_CORNER = 4; // empilhar até 4 antes de usar outro canto
+const MAX_PER_CORNER = 1; // máximo 1 GIF por canto por vez
+let gifQueue = []; // fila de GIFs pendentes
 
-// Função que spawn um GIF no canto, evitando sobreposição usando contadores por canto
+// Função que spawn um GIF no canto, evitando sobreposição
 function spawnCornerGif() {
     try {
+        // Se já existe um GIF ativo, adicionar à fila em vez de spawnar imediatamente
+        const totalActive = Object.values(cornerCounts).reduce((a, b) => a + b, 0);
+        if (totalActive >= 1) {
+            // Adicionar à fila se houver espaço (máximo 3 na fila)
+            if (gifQueue.length < 3) {
+                gifQueue.push(true);
+            }
+            return;
+        }
+
         const file = gifFiles[Math.floor(Math.random() * gifFiles.length)];
         const img = document.createElement('img');
         img.src = file;
@@ -280,38 +287,43 @@ function spawnCornerGif() {
             { key: 'br', style: { bottom: '12px', right: '12px' }, dirX: -1, dirY: -1 }
         ];
 
-        // Escolher canto preferencialmente com menos itens
-        let cornerDef = CORNER_DEFS[Math.floor(Math.random() * CORNER_DEFS.length)];
-        if (cornerCounts[cornerDef.key] >= MAX_PER_CORNER) {
-            cornerDef = CORNER_DEFS.reduce((minC, c) => cornerCounts[c.key] < cornerCounts[minC.key] ? c : minC, CORNER_DEFS[0]);
+        // Escolher canto aleatório (preferencialmente vazio)
+        let availableCorners = CORNER_DEFS.filter(c => cornerCounts[c.key] === 0);
+        if (availableCorners.length === 0) {
+            availableCorners = CORNER_DEFS; // fallback para qualquer canto
         }
+        const cornerDef = availableCorners[Math.floor(Math.random() * availableCorners.length)];
 
         // registrar
-        cornerCounts[cornerDef.key] = (cornerCounts[cornerDef.key] || 0) + 1;
+        cornerCounts[cornerDef.key] = 1;
         img.dataset.corner = cornerDef.key;
 
         // aplicar estilo base
         Object.assign(img.style, cornerDef.style);
 
-        // deslocamento incremental para empilhar sem sobreposição exata
-        const slotIndex = cornerCounts[cornerDef.key] - 1; // 0-based
-        const offset = 12 + slotIndex * 18; // px
-        const translateX = cornerDef.dirX * offset;
-        const translateY = cornerDef.dirY * offset;
-
         const scale = 0.85 + Math.random() * 0.4;
-        img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        img.style.transform = `scale(${scale})`;
 
         document.body.appendChild(img);
 
-        const display = Math.random() * 1600 + 1200;
+        // Duração mais controlada: 1.5s a 2.5s
+        const display = 1500 + Math.random() * 1000;
         setTimeout(() => {
             img.style.opacity = '0';
-            img.style.transform = `translate(${translateX}px, ${translateY - 6}px) scale(${scale * 0.95})`;
+            img.style.transform = `scale(${scale * 0.95})`;
             setTimeout(() => {
                 try {
                     const k = img.dataset.corner;
-                    if (k && cornerCounts[k]) cornerCounts[k] = Math.max(0, cornerCounts[k] - 1);
+                    if (k && cornerCounts[k]) cornerCounts[k] = 0;
+                    
+                    // Processar fila: se houver GIFs pendentes, spawnar o próximo
+                    if (gifQueue.length > 0) {
+                        gifQueue.shift();
+                        // pequeno delay antes de spawnar o próximo para evitar picos
+                        setTimeout(() => {
+                            spawnCornerGif();
+                        }, 100);
+                    }
                 } catch (err) {}
                 img.remove();
             }, 300);
@@ -516,7 +528,7 @@ function handleMouseUp(e) {
         }
 
         // spawn pequeno de GIFs em cantos quando houver falhas
-        if (Math.random() < Math.min(0.12 + proximityCounter * 0.01, 0.5)) {
+        if (Math.random() < Math.min(0.06 + proximityCounter * 0.005, 0.25)) {
             spawnCornerGif();
         }
     }
@@ -631,8 +643,8 @@ function moveButtonAway() {
         evasiveBtn.style.transform = `scale(${0.7 + proximityCounter * 0.02})`;
     }
 
-    // Spawnar GIFs nos cantos com chance que aumenta com a proximidade acumulada
-    if (Math.random() < Math.min(0.15 + proximityCounter * 0.01, 0.6)) {
+    // Spawnar GIFs nos cantos com chance reduzida que aumenta com a proximidade acumulada
+    if (Math.random() < Math.min(0.08 + proximityCounter * 0.01, 0.4)) {
         spawnCornerGif();
     }
 }
