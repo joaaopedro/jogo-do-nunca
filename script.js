@@ -226,9 +226,14 @@ window.addEventListener('load', () => {
         if (e.key === 'F1') {
             // prevenir comportamento padrão (help)
             e.preventDefault();
+            e.stopPropagation();
             
             // Ctrl+F1: Reset com senha (criptografada)
-            if (e.ctrlKey) {
+            // Verificar Ctrl (Windows/Linux) ou Cmd (Mac)
+            const isCtrlPressed = e.ctrlKey || e.metaKey;
+            
+            if (isCtrlPressed) {
+                console.log('[DEBUG] Ctrl+F1 detectado');
                 const senha = prompt('Digite a senha para resetar o Top 10:');
                 if (senha !== null) {
                     try {
@@ -250,6 +255,7 @@ window.addEventListener('load', () => {
             }
             
             // F1 normal: Falar visitas globais
+            console.log('[DEBUG] F1 detectado (sem Ctrl)');
             try {
                 const visitas = window.globalVisits || 'desconhecido';
                 const msg = `Visitas globais: ${visitas}.`;
