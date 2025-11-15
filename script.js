@@ -194,7 +194,8 @@ function handlePointerDown(e) {
     const clickY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
 
     // Debug: registrar eventos estranhos quando ativado
-    const CLICK_DEBUG = false; // mude para true para ver logs detalhados no console
+    // habilita debug quando a URL contém '#debug' (ex: http://localhost:8000/#debug)
+    const CLICK_DEBUG = (typeof window !== 'undefined' && window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1);
     if (CLICK_DEBUG) {
         console.debug('[CLICK_DEBUG] event:', { type: e.type, isTrusted: e.isTrusted, pointerType: e.pointerType, button: e.button, clientX: clickX, clientY: clickY, target: e.target && (e.target.id || e.target.className || e.target.tagName) });
     }
