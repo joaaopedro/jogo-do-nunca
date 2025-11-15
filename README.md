@@ -333,3 +333,56 @@ Acesse via ngrok em: `https://semibiologic-quondam-teri.ngrok-free.dev`
 Este é um projeto de trolagem para divertir amigos! 😈
 
 Divirta-se!
+
+# Jogo do Nunca
+
+Jogo interativo onde você tenta clicar em um botão impossível!
+
+## 🚀 Como rodar
+
+### Frontend (cliente)
+1. Abra `index.html` no navegador
+2. Ou use um servidor local: `npx serve .`
+
+### Backend (servidor)
+1. Instale as dependências: `npm install`
+2. Inicie o servidor: `npm start`
+3. Ou modo desenvolvimento: `npm run dev`
+
+O servidor rodará em `http://localhost:3000`
+
+## 🔑 Recursos
+
+- ✅ Sistema de ranking local e global
+- ✅ Contador de visitas global
+- ✅ Reset de ranking com senha (Ctrl+F1)
+- ✅ Suporte a touch/mouse/caneta
+- ✅ Cursor invertido e botão evasivo
+- ✅ GIFs animados nos cantos
+
+## 🔐 Admin
+
+- **Reset do ranking**: Pressione `Ctrl+F1` e digite a senha
+- Senha padrão: `JpGv1209`
+
+## 📁 Estrutura
+
+```
+jogo-do-nunca/
+├── index.html          # Frontend
+├── style.css           # Estilos
+├── script.js           # Lógica do jogo
+├── server.js           # Backend API
+├── package.json        # Dependências Node
+├── .env                # Configurações (não versionado)
+└── data/               # Dados salvos (não versionado)
+    ├── leaderboard.json
+    └── visits.json
+```
+
+## 🌐 Deploy
+
+Para produção, altere em `index.html`:
+```javascript
+window.API_BASE = 'https://seu-servidor.com';
+```

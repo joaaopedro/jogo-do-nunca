@@ -11,9 +11,9 @@
     <!-- Exemplo: https://jogo-do-nunca-server.onrender.com -->
     <!-- Para testes locais, deixe descomentado como abaixo ou use http://localhost:3000 -->
     <script>
-        // Descomente e configure conforme seu servidor:
-         window.API_BASE = 'https://jogo-do-nunca.onrender.com';
-         window.API_KEY = 'sua-chave-api-secreta'; // (opcional; só se o servidor usar API_KEY)
+        // Configurar API base (altere para seu servidor em produção)
+        window.API_BASE = 'http://localhost:3000';
+        // window.API_KEY = 'sua-chave-secreta'; // Opcional
         
         // Para testes locais (se rodar start-local.bat):
         // window.API_BASE = 'http://localhost:3000';
@@ -59,7 +59,8 @@
         <div class="container ranking-container">
             <h1>🏆 RANKING GLOBAL</h1>
             
-            <p id="registeredPlayersInfo" class="registered-info">Jogadores registrados: 0</p>
+            <p id="registeredPlayersInfo" class="registered-info">Jogadores registrados: 0</p>
+
 
             <div id="rankingList" class="ranking-list"></div>
             

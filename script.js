@@ -451,11 +451,11 @@ window.addEventListener('load', () => {
                             
                             // Mensagem de sucesso sempre menciona o reset local
                             if (serverOk) {
-                                alert('✅ Top 10 resetado com sucesso!\n\n• Local: resetado\n• Servidor: resetado');
+                                alert('✅ Top 10 resetado com sucesso!\n\n• Local: ✅ Resetado\n• Servidor: ✅ Resetado');
                             } else if (API_BASE) {
-                                alert(`✅ Top 10 LOCAL resetado com sucesso!\n\n⚠️ Servidor: ${serverMsg}\n\n(O ranking local foi limpo. Configure o servidor se precisar de reset global.)`);
+                                alert('✅ Top 10 LOCAL resetado com sucesso!\n\n⚠️ Servidor: Não foi possível resetar\n(CORS bloqueado - configure o servidor se precisar de reset global)\n\nO ranking local foi limpo completamente.');
                             } else {
-                                alert('✅ Top 10 local resetado com sucesso!\n\n(Servidor não configurado - apenas reset local)');
+                                alert('✅ Top 10 local resetado com sucesso!\n\n(Servidor não configurado)');
                             }
                             
                             setTimeout(() => location.reload(), 700);
