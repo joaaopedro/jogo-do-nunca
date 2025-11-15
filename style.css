@@ -167,6 +167,17 @@ h1 {
 }
 
 /* ===== RANKING PAGE ===== */
+.registered-info {
+    margin: 10px 0 0;
+    padding: 10px 16px;
+    border-radius: 999px;
+    text-align: center;
+    font-weight: 600;
+    color: #fefefe;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
 .ranking-list {
     background: rgba(255, 255, 255, 0.08);
     border-radius: 12px;
@@ -181,43 +192,54 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px;
-    margin: 8px 0;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    font-weight: 600;
+    padding: 16px 18px;
+    margin: 10px 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.05em;
+    border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .ranking-list .entry:nth-child(1) {
-    background: linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,215,0,0.1));
-    border: 1px solid rgba(255,215,0,0.5);
+    background: linear-gradient(135deg, rgba(255,215,0,0.4), rgba(255,215,0,0.15));
+    border: 2px solid rgba(255,215,0,0.7);
+    box-shadow: 0 4px 12px rgba(255,215,0,0.3);
 }
 
 .ranking-list .entry:nth-child(2) {
-    background: linear-gradient(135deg, rgba(192,192,192,0.3), rgba(192,192,192,0.1));
-    border: 1px solid rgba(192,192,192,0.5);
+    background: linear-gradient(135deg, rgba(192,192,192,0.4), rgba(192,192,192,0.15));
+    border: 2px solid rgba(192,192,192,0.7);
+    box-shadow: 0 4px 12px rgba(192,192,192,0.3);
 }
 
 .ranking-list .entry:nth-child(3) {
-    background: linear-gradient(135deg, rgba(205,127,50,0.3), rgba(205,127,50,0.1));
-    border: 1px solid rgba(205,127,50,0.5);
+    background: linear-gradient(135deg, rgba(205,127,50,0.4), rgba(205,127,50,0.15));
+    border: 2px solid rgba(205,127,50,0.7);
+    box-shadow: 0 4px 12px rgba(205,127,50,0.3);
 }
 
 .entry-rank {
-    font-size: 1.3em;
-    min-width: 40px;
-    font-weight: 800;
+    font-size: 1.6em;
+    min-width: 45px;
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .entry-name {
     flex: 1;
     text-align: left;
-    margin: 0 15px;
+    margin: 0 18px;
+    font-size: 1.1em;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .entry-time {
     font-family: 'Courier New', monospace;
-    font-size: 0.95em;
+    font-size: 1.05em;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .empty-state {

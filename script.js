@@ -27,6 +27,10 @@ function showPage(pageKey) {
     // Atualizar classe do body para mostrar/ocultar cursor
     document.body.classList.remove('show-menu', 'show-game', 'show-ranking');
     document.body.classList.add(`show-${pageKey}`);
+    // Ocultar cursor falso fora da página de jogo
+    if (pageKey !== 'game' && fakeCursor) fakeCursor.style.display = 'none';
+    // Remover dica "Pressione F1..." ao exibir o menu
+    if (pageKey === 'menu') removeF1Tip();
 }
 
 // Botões de navegação
@@ -35,11 +39,11 @@ const leaderboardMenuBtn = document.getElementById('leaderboardMenuBtn');
 const backToMenuBtn = document.getElementById('backToMenuBtn');
 
 if (playBtn) playBtn.addEventListener('click', () => {
-    showPage('menu'); // Mostrar modal de nome
-    setTimeout(() => {
-        const nameModal = document.getElementById('nameModal');
-        if (nameModal) nameModal.classList.add('show');
-    }, 100);
+    // Não mudar de página ainda, apenas mostrar o modal
+    const nameModal = document.getElementById('nameModal');
+    if (nameModal) nameModal.classList.add('show');
+    // Focar no input
+    if (playerNameInput) playerNameInput.focus();
 });
 
 if (leaderboardMenuBtn) leaderboardMenuBtn.addEventListener('click', () => {
@@ -72,6 +76,9 @@ let buttonSpeed = 1;
 let gameActive = false;
 let shiftPressed = false;
 let ctrlPressed = false;
+// Controlar transform do botão sem sobrescrever (rotação + escala)
+let btnRotDeg = 0;
+let btnScale = 1;
 
 // Debug flag ativada via hash '#debug'
 const CLICK_DEBUG = (typeof window !== 'undefined' && window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1);
@@ -122,6 +129,7 @@ const bgCatcher = document.getElementById('bgCatcher');
 const liveTimer = document.getElementById('liveTimer');
 const nameModal = document.getElementById('nameModal');
 const rankingList = document.getElementById('rankingList');
+const registeredPlayersInfo = document.getElementById('registeredPlayersInfo');
 
 // API base (defina window.API_BASE = 'https://seu-servidor' em index.html se quiser usar o servidor)
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
@@ -130,7 +138,9 @@ function buildAuthHeaders() {
     const headers = {};
     if (typeof window !== 'undefined' && window.API_KEY) {
         headers['x-api-key'] = window.API_KEY;
+        headers['Authorization'] = `Bearer ${window.API_KEY}`;
     }
+    headers['Accept'] = 'application/json, text/plain, */*';
     return headers;
 }
 
@@ -166,6 +176,81 @@ async function fetchGlobalStats() {
     } catch (e) { return null; }
 }
 
+// Reset global do leaderboard no servidor (tenta vários endpoints, métodos e formatos)
+async function resetGlobalLeaderboard(passwordHash) {
+    if (!API_BASE) return { ok: false, message: 'API_BASE não configurado' };
+
+    const paths = [
+        '/admin/reset-leaderboard',
+        '/admin/reset',
+        '/leaderboard/reset',
+        '/scores/reset',
+        '/score/reset',
+        '/reset-leaderboard',
+        '/reset'
+    ];
+
+    const makeBody = (extra = {}) => JSON.stringify(Object.assign({ passwordHash, action: 'reset' }, extra));
+
+    // Combinações de tentativas
+    const attempts = [];
+    for (const p of paths) {
+        attempts.push({ method: 'POST', path: p, body: makeBody() });
+        attempts.push({ method: 'POST', path: p, body: makeBody({ ts: Date.now() }) });
+        attempts.push({ method: 'DELETE', path: p, body: makeBody() });
+        attempts.push({ method: 'DELETE', path: p }); // sem body
+        // querystring fallback (alguns backends só leem query)
+        attempts.push({ method: 'POST', path: `${p}?passwordHash=${encodeURIComponent(passwordHash)}` });
+        attempts.push({ method: 'GET', path: `${p}?passwordHash=${encodeURIComponent(passwordHash)}` });
+    }
+
+    const baseHeaders = Object.assign({ 'Content-Type': 'application/json', 'x-admin-pass-sha256': passwordHash }, buildAuthHeaders());
+    const errors = [];
+
+    for (const a of attempts) {
+        try {
+            const res = await fetch(`${API_BASE}${a.path}`, {
+                method: a.method,
+                headers: baseHeaders,
+                body: a.body,
+                mode: 'cors',
+                credentials: 'include' // permite cookies se o backend usar sessão
+            });
+            if (res.ok || res.status === 204) {
+                if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
+                    console.debug('[RESET_OK]', a.method, a.path, res.status);
+                }
+                return { ok: true };
+            } else {
+                let detail = `HTTP ${res.status}`;
+                try {
+                    const ct = res.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                        const j = await res.json();
+                        if (j && (j.message || j.error)) detail = j.message || j.error;
+                    } else {
+                        const t = await res.text();
+                        if (t) detail = t.slice(0, 300);
+                    }
+                } catch (_) {}
+                errors.push(`${a.method} ${a.path} -> ${detail}`);
+                if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
+                    console.debug('[RESET_FAIL]', a.method, a.path, detail);
+                }
+            }
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : 'erro de rede';
+            errors.push(`${a.method} ${a.path} -> ${msg}`);
+            if (window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1) {
+                console.debug('[RESET_ERR]', a.method, a.path, msg);
+            }
+        }
+    }
+
+    // Retorna o último erro resumido e mantém os detalhes no console com #debug
+    return { ok: false, message: errors[errors.length - 1] || 'Nenhuma tentativa obteve sucesso' };
+}
+
 // Timer / jogador
 let playerName = '';
 let startTime = null;
@@ -195,68 +280,77 @@ function saveLeaderboard(entries) {
     try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch (e) { /* ignore */ }
 }
 
+function updateRegisteredPlayersInfo(count) {
+    if (!registeredPlayersInfo) return;
+    const safeCount = (typeof count === 'number' && isFinite(count) && count >= 0)
+        ? Math.floor(count)
+        : 0;
+    registeredPlayersInfo.textContent = `Jogadores registrados: ${safeCount}`;
+    // Estilo de alta legibilidade (texto escuro e sem sombra/baixa opacidade)
+    Object.assign(registeredPlayersInfo.style, {
+        color: '#1b1e23',
+        fontWeight: '800',
+        letterSpacing: '0.3px',
+        textShadow: 'none',
+        opacity: '1',
+        mixBlendMode: 'normal' // evita clarear o texto em fundos claros
+    });
+}
+
 function saveScore(name, ms) {
     const entries = loadLeaderboard();
-    entries.push({ name: name || '—', timeMs: ms, at: new Date().toISOString() });
+    entries.push({ name: name || '-', timeMs: ms, at: new Date().toISOString() });
     entries.sort((a,b) => a.timeMs - b.timeMs);
     const top = entries.slice(0, 10);
     saveLeaderboard(top);
+    updateRegisteredPlayersInfo(top.length);
     return top;
-}
-
-function renderLeaderboard() {
-    const entries = loadLeaderboard();
-    if (!leaderboardEl) return;
-    if (!entries || entries.length === 0) {
-        leaderboardEl.innerHTML = '<div class="row">Nenhum resultado ainda — seja o primeiro!</div>';
-        return;
-    }
-    const html = entries.map((e,i) => {
-        return `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`;
-    }).join('');
-    leaderboardEl.innerHTML = html;
 }
 
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
 
-// Start button handler
-if (startGameBtn) startGameBtn.addEventListener('click', () => {
-    const val = (playerNameInput && playerNameInput.value) ? playerNameInput.value.trim() : '';
-    playerName = val || 'Jogador';
-    try { localStorage.setItem('jogoDoNunca_lastName', playerName); } catch (e) {}
-    // iniciar jogo
-    nameModal.classList.remove('show');
-    showPage('game');
-    startTime = Date.now();
-    elapsedMs = 0;
-    proximityCounter = 0;
-    buttonSpeed = 1;
-    gameActive = true;
-});
+// Função ÚNICA para gerar HTML do ranking - usa estrutura .entry com spans
+function renderRankingHtml(entries) {
+    if (!entries || entries.length === 0) {
+        return '<div class="empty-state">Nenhum resultado ainda — seja o primeiro!</div>';
+    }
+    const commonText = 'color:#1b1e23;text-shadow:0 1px 1px rgba(0,0,0,.15);';
+    const timeText = commonText + 'font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;letter-spacing:.3px;';
+    return entries.map((e, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const rankDisplay = medal || `#${i+1}`;
+        return `<div class="entry">
+            <span class="entry-rank" style="${commonText}font-weight:800;display:inline-flex;gap:6px;align-items:center;">${rankDisplay}</span>
+            <span class="entry-name" style="${commonText}font-weight:700;">${escapeHtml(e.name)}</span>
+            <span class="entry-time" style="${timeText}">${formatTime(e.timeMs)}</span>
+        </div>`;
+    }).join('');
+}
+
+// Leaderboard local
+function renderLeaderboard() {
+    const entries = loadLeaderboard();
+    if (!leaderboardEl) return;
+    leaderboardEl.innerHTML = renderRankingHtml(entries);
+}
 
 // View Leaderboard button handler (from game page - if needed)
 const loadAndDisplayRanking = () => {
     const entries = loadLeaderboard();
-    if (!entries || entries.length === 0) {
-        rankingList.innerHTML = '<div class="empty-state">📊 Nenhum resultado ainda — seja o primeiro!</div>';
-    } else {
-        const html = entries.map((e, i) => {
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-            return `<div class="entry">
-                <span class="entry-rank">${medal || '#' + (i+1)}</span>
-                <span class="entry-name">${escapeHtml(e.name)}</span>
-                <span class="entry-time">${formatTime(e.timeMs)}</span>
-            </div>`;
-        }).join('');
-        rankingList.innerHTML = html;
-    }
+    const totalEntries = entries ? entries.length : 0;
+    updateRegisteredPlayersInfo(totalEntries);
+    if (!rankingList) return;
+    rankingList.innerHTML = renderRankingHtml(entries);
 };
 
 // Auto-focus input and prefill last name
 window.addEventListener('load', () => {
     // Mostrar a página do menu inicialmente
     showPage('menu');
-    
+    // Garantir remoção da dica mesmo se renderizar depois
+    removeF1Tip();
+    setTimeout(removeF1Tip, 80);
+    setTimeout(removeF1Tip, 300);
     try {
         const last = localStorage.getItem('jogoDoNunca_lastName');
         if (last && playerNameInput) playerNameInput.value = last;
@@ -264,6 +358,8 @@ window.addEventListener('load', () => {
     if (playerNameInput) playerNameInput.focus();
     // render leaderboard initially (shows previous results)
     renderLeaderboard();
+    // Aplicar estilo e valor inicial ao contador (base local)
+    try { updateRegisteredPlayersInfo(loadLeaderboard().length); } catch (_) {}
     // start the live timer loop
     requestAnimationFrame(tick);
     
@@ -280,8 +376,7 @@ window.addEventListener('load', () => {
             if (stats && stats.leaderboard && Array.isArray(stats.leaderboard)) {
                 // renderizar leaderboard global (substitui o local one)
                 if (leaderboardEl) {
-                    const html = stats.leaderboard.map((e,i) => `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`).join('');
-                    leaderboardEl.innerHTML = html;
+                    leaderboardEl.innerHTML = renderRankingHtml(stats.leaderboard);
                 }
             }
         } catch (e) {}
@@ -308,7 +403,6 @@ window.addEventListener('load', () => {
             // Ctrl+F1: Reset com senha (criptografada)
             // Verificar Ctrl (Windows/Linux) ou Cmd (Mac)
             const isCtrlPressed = e.ctrlKey || e.metaKey;
-            
             if (isCtrlPressed) {
                 console.log('[DEBUG] Ctrl+F1 detectado');
                 const senha = prompt('Digite a senha para resetar o Top 10:');
@@ -316,11 +410,22 @@ window.addEventListener('load', () => {
                     try {
                         const senhaHash = await sha256(senha);
                         if (senhaHash === ADMIN_PASSWORD_HASH) {
-                            // Resetar Top 10 local
-                            localStorage.removeItem('jogoDoNunca_leaderboard_v1');
-                            alert('✅ Top 10 resetado com sucesso!');
-                            // Recarregar para refletir as mudanças
-                            setTimeout(() => location.reload(), 500);
+                            let serverMsg = '';
+                            let ok = false;
+                            if (API_BASE) {
+                                const res = await resetGlobalLeaderboard(senhaHash);
+                                ok = !!res.ok;
+                                serverMsg = res.message || '';
+                            }
+                            try { localStorage.removeItem(LB_KEY); } catch (_) {}
+                            if (ok) {
+                                alert('✅ Top 10 global resetado com sucesso!');
+                            } else if (API_BASE) {
+                                alert(`⚠️ Não foi possível resetar o ranking global no servidor.\nO ranking local foi resetado.\nDetalhes: ${serverMsg || 'falha na requisição'}`);
+                            } else {
+                                alert('✅ Top 10 local resetado. (Servidor não configurado)');
+                            }
+                            setTimeout(() => location.reload(), 700);
                         } else {
                             alert('❌ Senha incorreta!');
                         }
@@ -456,35 +561,33 @@ function spawnCornerGif() {
     }
 }
 
-// Detectar SHIFT sendo pressionado
+// Detectar SHIFT/Ctrl/Cmd sendo pressionado
 document.addEventListener('keydown', (e) => {
     if (e.shiftKey) {
         shiftPressed = true;
     }
-    if (e.ctrlKey) {
+    if (e.ctrlKey || e.metaKey) {
         ctrlPressed = true;
     }
 });
-
-// Detectar SHIFT sendo solto
+// Detectar SHIFT/Ctrl/Cmd sendo solto
 document.addEventListener('keyup', (e) => {
     if (!e.shiftKey) {
         shiftPressed = false;
     }
-    if (!e.ctrlKey) {
+    if (!e.ctrlKey && !e.metaKey) {
         ctrlPressed = false;
     }
 });
 
-
-// Rastrear a posição real do mouse
-document.addEventListener('mousemove', (e) => {
+// Rastrear a posição real do mouse / ponteiro (suporta mouse, touch e caneta)
+window.addEventListener('pointermove', (e) => {
     if (!gameActive) return;
 
     realMouseX = e.clientX;
     realMouseY = e.clientY;
 
-    // Inverter a posição do mouse (efeito trolleador)
+    // Inverter a posição do ponteiro (efeito trolleador)
     let invertedX = isInvertedX ? getWindowWidth() - realMouseX : realMouseX;
     let invertedY = isInvertedY ? getWindowHeight() - realMouseY : realMouseY;
 
@@ -494,12 +597,16 @@ document.addEventListener('mousemove', (e) => {
         invertedY = realMouseY;
     }
 
-    // Mostrar o "cursor falso" na posição invertida
-    fakeCursor.style.left = (invertedX - 15) + 'px';
-    fakeCursor.style.top = (invertedY - 15) + 'px';
-    fakeCursor.style.display = 'block';
+    // Mostrar "cursor falso" apenas para mouse; esconder para touch/caneta
+    if (e.pointerType === 'mouse') {
+        fakeCursor.style.left = (invertedX - 15) + 'px';
+        fakeCursor.style.top = (invertedY - 15) + 'px';
+        fakeCursor.style.display = 'block';
+    } else {
+        if (fakeCursor) fakeCursor.style.display = 'none';
+    }
 
-    // Mover o botão se o mouse estiver muito perto
+    // Mover o botão se o ponteiro estiver muito perto
     const btnRect = evasiveBtn.getBoundingClientRect();
     const btnCenterX = btnRect.left + btnRect.width / 2;
     const btnCenterY = btnRect.top + btnRect.height / 2;
@@ -512,7 +619,14 @@ document.addEventListener('mousemove', (e) => {
     if (distance < 150 && !ctrlPressed) {
         moveButtonAway();
     }
-});
+}, false);
+
+// Ocultar o cursor falso quando a janela perde foco/visibilidade ou ponteiro sai da janela
+window.addEventListener('blur', () => { if (fakeCursor) fakeCursor.style.display = 'none'; }, false);
+window.addEventListener('pointerleave', () => { if (fakeCursor) fakeCursor.style.display = 'none'; }, false);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && fakeCursor) fakeCursor.style.display = 'none';
+}, false);
 
 // Ao passar o mouse sobre o botão com a posição invertida, ele também escapa
 evasiveBtn.addEventListener('mouseenter', () => {
@@ -553,10 +667,12 @@ function handlePointerDown(e) {
     // evitar duplicados muito próximos (pointerdown + mousedown)
     if (isDuplicatePointerEvent(e)) return;
 
-    // Garantir que seja um evento de mouse e que o botão esquerdo esteja pressionado
-    // e.buttons indica os botões atualmente pressionados (bitmask). Em hover, e.buttons normalmente é 0.
-    if (typeof e.buttons === 'number' && (e.buttons & 1) === 0) return;
-    if (typeof e.button === 'number' && e.button !== 0) return;
+    // Só exigir botão esquerdo para mouse. Touch/pen seguem sem este filtro.
+    const isMouse = e.pointerType === 'mouse';
+    if (isMouse) {
+        if (typeof e.buttons === 'number' && (e.buttons & 1) === 0) return;
+        if (typeof e.button === 'number' && e.button !== 0) return;
+    }
 
     // coordenadas do clique (fallbacks seguros)
     const clickX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
@@ -608,8 +724,9 @@ let pendingMouseDownTimeout = null;
 
 function handleMouseUp(e) {
     if (!gameActive) return;
-    // só processar mouseup do botão esquerdo
-    if (typeof e.button === 'number' && e.button !== 0) return;
+    // Só exigir botão esquerdo para mouse. Touch/pen (button costuma ser -1) não retornam.
+    const isMouse = e.pointerType === 'mouse';
+    if (isMouse && typeof e.button === 'number' && e.button !== 0) return;
     if (!pendingMouseDown) return;
 
     // coordenadas do mouseup
@@ -660,15 +777,22 @@ function handleMouseUp(e) {
     if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
 }
 
-// Anexar handler: em vez de ouvir no documento inteiro, ouvir apenas cliques no "fundo"
-// (bgCatcher). Isso garante que cliques no painel ou no botão não sejam capturados.
-bgCatcher.addEventListener('mousedown', function (e) {
-    // reutilizar a lógica principal do handler, mas apenas quando o fundo for clicado
-    handlePointerDown(e);
-}, false);
+// Anexar handler no fundo usando pointerdown (suporta mouse/touch/pen)
+if (bgCatcher) {
+    bgCatcher.addEventListener('pointerdown', function (e) {
+        // Evitar scroll/seleção/navegação acidental no fundo
+        e.preventDefault();
+        e.stopPropagation();
+        handlePointerDown(e);
+    }, false);
+}
 
-// Ouvir mouseup globalmente para validar o pendingMouseDown (mouseup pode ocorrer em qualquer lugar)
-window.addEventListener('mouseup', handleMouseUp, false);
+// Ouvir pointerup/pointercancel globalmente para validar/limpar o pendingMouseDown
+window.addEventListener('pointerup', handleMouseUp, false);
+window.addEventListener('pointercancel', () => {
+    pendingMouseDown = null;
+    if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
+}, false);
 
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
@@ -730,12 +854,12 @@ function moveButtonAway() {
     evasiveBtn.style.left = randomX + 'px';
     evasiveBtn.style.top = randomY + 'px';
 
-    // Trolagem: Virar o botão
+    // Trolagem: Virar o botão (atualiza rotação sem sobrescrever a escala)
     if (Math.random() > 0.8) {
-        evasiveBtn.style.transform = `rotate(${Math.random() * 360}deg)`;
+        btnRotDeg = Math.random() * 360;
     }
 
-    // Trolagem: Mudar cor do botão aleatoricamente
+    // Trolagem: Mudar cor do botão aleatoriamente
     if (Math.random() > 0.7) {
         const colors = [
             'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -746,12 +870,6 @@ function moveButtonAway() {
         evasiveBtn.style.background = colors[Math.floor(Math.random() * colors.length)];
     }
 
-    // Adicionar floating text baseado na proximidade
-    if (proximityCounter % 2 === 0) {
-        const floatMsg = floatingMessages[Math.floor(Math.random() * floatingMessages.length)];
-        createFloatingText(floatMsg);
-    }
-
     // Efeito glitch a cada 5 aproximações
     if (proximityCounter % 5 === 0) {
         evasiveBtn.classList.add('glitch');
@@ -760,10 +878,13 @@ function moveButtonAway() {
         }, 500);
     }
 
-    // Aumentar size do botão após 10 aproximações (não confundir com cliques)
+    // Aumentar size do botão após 10 aproximações (compõe com rotação)
     if (proximityCounter > 10) {
-        evasiveBtn.style.transform = `scale(${0.7 + proximityCounter * 0.02})`;
+        btnScale = Math.min(0.7 + proximityCounter * 0.02, 2.2); // clamp para não ficar exagerado
     }
+
+    // Aplicar transform composto (rotação + escala) uma única vez
+    evasiveBtn.style.transform = `rotate(${btnRotDeg.toFixed(2)}deg) scale(${btnScale.toFixed(2)})`;
 
     // Spawnar GIFs nos cantos com chance reduzida que aumenta com a proximidade acumulada
     if (Math.random() < Math.min(0.08 + proximityCounter * 0.01, 0.4)) {
@@ -773,18 +894,23 @@ function moveButtonAway() {
 
 function showTrollMessage(message) {
     trollMessage.textContent = message;
+    // Aumenta contraste para melhor leitura
+    Object.assign(trollMessage.style, {
+        background: 'rgba(0,0,0,0.65)',
+        color: '#fff',
+        padding: '8px 12px',
+        borderRadius: '12px',
+        textShadow: '0 1px 2px rgba(0,0,0,.4)',
+        backdropFilter: 'blur(2px)'
+    });
     trollMessage.classList.add('show');
-    
-    setTimeout(() => {
-        trollMessage.classList.remove('show');
-    }, 2000);
+    setTimeout(() => { trollMessage.classList.remove('show'); }, 2000);
 }
 
 function createFloatingText(text) {
     const floatingText = document.createElement('div');
     floatingText.className = 'floating-text';
     floatingText.textContent = text;
-    
     // posição aleatória
     const randomX = Math.random() * (getWindowWidth() - 120) + 40;
     const randomY = Math.random() * (getWindowHeight() - 160) + 60;
@@ -792,19 +918,11 @@ function createFloatingText(text) {
     floatingText.style.top = randomY + 'px';
 
     // cor aleatória e tamanho maior
-    floatingText.style.color = [
-        '#ff6b6b',
-        '#4ecdc4',
-        '#ffe66d',
-        '#ff6348',
-        '#95e1d3',
-        '#9b59b6',
-    ][Math.floor(Math.random() * 6)];
-
-    // tamanho aleatório menor e mais discreto entre ~0.9em e 1.2em
-    const size = Math.random() * 0.3 + 0.9;
-    floatingText.style.fontSize = size.toFixed(2) + 'em';
-    floatingText.style.fontWeight = '600';
+    floatingText.style.color = '#fff';
+    floatingText.style.background = 'rgba(0,0,0,0.45)';
+    floatingText.style.padding = '6px 10px';
+    floatingText.style.borderRadius = '10px';
+    floatingText.style.textShadow = '0 1px 2px rgba(0,0,0,.4), 0 0 1px rgba(0,0,0,.25)';
 
     // duração de animação mais curta para menos distração
     const duration = (Math.random() * 0.6) + 1.0; // 1.0s - 1.6s
@@ -826,19 +944,15 @@ function celebrateClick() {
 
     // salvar no leaderboard e renderizar
     try {
-        // salvar localmente
         saveScore(playerName || 'Jogador', elapsedMs);
         renderLeaderboard();
-        // tentar salvar remotamente (global leaderboard)
         (async () => {
             const remote = await sendScoreToServer(playerName || 'Jogador', elapsedMs);
             if (remote && leaderboardEl) {
-                const html = remote.map((e,i) => `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`).join('');
-                leaderboardEl.innerHTML = html;
+                leaderboardEl.innerHTML = renderRankingHtml(remote);
             }
         })();
     } catch (e) {}
-
     // Mostrar tempo no modal
     if (victoryTimeDisplay) {
         victoryTimeDisplay.textContent = `Tempo: ${formatTime(elapsedMs)}`;
@@ -860,9 +974,10 @@ function celebrateClick() {
 
     // Mostrar modal de vitória
     victoryModal.classList.add('show');
-    
     // Mostrar o mouse ao aparecer o modal
     document.body.classList.add('show-victory');
+    // Esconder cursor falso na vitória
+    if (fakeCursor) fakeCursor.style.display = 'none';
 
     // Som de vitória (usando Web Audio)
     playVictorySound();
@@ -892,3 +1007,44 @@ function playVictorySound() {
         // Ignorar erro se Web Audio não estiver disponível
     }
 }
+
+// Utilitário para remover a dica "Pressione F1 para ouvir visitantes globais"
+function removeF1Tip() {
+    try {
+        const root = document.getElementById('menuPage') || document.body;
+        if (!root) return;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const toRemove = new Set();
+        while (walker.nextNode()) {
+            const t = (walker.currentNode.nodeValue || '').trim();
+            if (t && /Pressione\s*F1/i.test(t)) {
+                const el = walker.currentNode.parentElement;
+                // remove o container mais próximo que faça sentido
+                toRemove.add(el.closest('.tip, .info, p, div') || el);
+            }
+        }
+        toRemove.forEach(el => el && el.remove());
+    } catch (_) {}
+}
+
+// Start button handler
+if (startGameBtn) startGameBtn.addEventListener('click', () => {
+    const val = (playerNameInput && playerNameInput.value) ? playerNameInput.value.trim() : '';
+    playerName = val || 'Jogador';
+    try { localStorage.setItem('jogoDoNunca_lastName', playerName); } catch (e) {}
+    // Fechar modal e iniciar jogo
+    if (nameModal) nameModal.classList.remove('show');
+    showPage('game');
+    startTime = Date.now();
+    elapsedMs = 0;
+    proximityCounter = 0;
+    buttonSpeed = 1;
+    gameActive = true;
+    // Resetar posição/escala/rotação do botão
+    btnRotDeg = 0;
+    btnScale = 1;
+    evasiveBtn.style.transform = 'rotate(0deg) scale(1)';
+    evasiveBtn.style.left = '50%';
+    evasiveBtn.style.top = '50%';
+    evasiveBtn.style.transition = '';
+});
