@@ -28,7 +28,7 @@ app.get('/stats', (req, res) => {
   res.json({ visits: data.visits || 0, leaderboard: data.leaderboard || [] });
 });
 
-app.post('/visit', (req, res) => {
+app.get('/visit', (req, res) => {
   // If API_KEY is set on the server, enforce a simple header-based auth to avoid abuse.
   const SERVER_API_KEY = process.env.API_KEY || '';
   if (SERVER_API_KEY) {
@@ -41,7 +41,7 @@ app.post('/visit', (req, res) => {
   res.json({ visits: data.visits });
 });
 
-app.post('/score', (req, res) => {
+app.get('/score', (req, res) => {
   const SERVER_API_KEY = process.env.API_KEY || '';
   if (SERVER_API_KEY) {
     const key = req.header('x-api-key') || '';
