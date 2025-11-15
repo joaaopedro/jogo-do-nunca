@@ -23,6 +23,29 @@ body.show-victory {
     cursor: auto;
 }
 
+/* ===== SISTEMA DE PÁGINAS ===== */
+.page {
+    display: none;
+    width: 100%;
+    height: 100%;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.page.show {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .container {
     text-align: center;
     background: rgba(255, 255, 255, 0.95);
@@ -32,6 +55,13 @@ body.show-victory {
     max-width: 500px;
     position: relative;
     z-index: 2; /* manter acima do bgCatcher */
+}
+
+.ranking-container {
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* elemento invisível que captura cliques no fundo da página */
@@ -91,6 +121,130 @@ h1 {
 .info p {
     margin: 10px 0;
     line-height: 1.6;
+}
+
+/* ===== MENU BUTTONS ===== */
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 40px 0;
+}
+
+.menu-btn {
+    padding: 16px 40px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.menu-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.menu-btn.secondary {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.menu-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+}
+
+.menu-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===== RANKING PAGE ===== */
+.ranking-list {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    overflow-y: auto;
+    margin: 20px 0;
+    flex: 1;
+    color: white;
+}
+
+.ranking-list .entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px;
+    margin: 8px 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.ranking-list .entry:nth-child(1) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,215,0,0.1));
+    border: 1px solid rgba(255,215,0,0.5);
+}
+
+.ranking-list .entry:nth-child(2) {
+    background: linear-gradient(135deg, rgba(192,192,192,0.3), rgba(192,192,192,0.1));
+    border: 1px solid rgba(192,192,192,0.5);
+}
+
+.ranking-list .entry:nth-child(3) {
+    background: linear-gradient(135deg, rgba(205,127,50,0.3), rgba(205,127,50,0.1));
+    border: 1px solid rgba(205,127,50,0.5);
+}
+
+.entry-rank {
+    font-size: 1.3em;
+    min-width: 40px;
+    font-weight: 800;
+}
+
+.entry-name {
+    flex: 1;
+    text-align: left;
+    margin: 0 15px;
+}
+
+.entry-time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;
+}
+
+.empty-state {
+    color: white;
+    padding: 30px;
+    font-size: 1.1em;
+}
+
+.ranking-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.back-menu-btn {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.back-menu-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.back-menu-btn:active {
+    transform: scale(0.95);
 }
 
 #fakeCursor {
@@ -382,6 +536,71 @@ h1 {
 
 .start-btn.secondary {
     background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* ===== MODAL: INSERIR NOME ===== */
+.name-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.name-modal.show {
+    display: flex;
+}
+
+.name-content {
+    background: rgba(255, 255, 255, 0.98);
+    padding: 50px 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5);
+    animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 400px;
+    width: 90%;
+}
+
+.name-content h2 {
+    color: #333;
+    font-size: 1.8em;
+    margin-bottom: 15px;
+}
+
+.name-content p {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 1em;
+}
+
+.name-content input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1em;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    transition: border-color 0.3s ease;
+}
+
+.name-content input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.name-content button {
+    width: 100%;
+}
+
+.name-modal, .name-content, #playerNameInput, .start-btn {
+    cursor: auto !important;
 }
 
 /* Modal para exibir leaderboard */

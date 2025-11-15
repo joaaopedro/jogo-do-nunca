@@ -9,6 +9,44 @@ const restartBtn = document.getElementById('restartBtn');
 // Hash SHA-256: d23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7
 const ADMIN_PASSWORD_HASH = 'd23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7';
 
+// ===== SISTEMA DE NAVEGAÇÃO DE PÁGINAS =====
+const pages = {
+    menu: document.getElementById('menuPage'),
+    game: document.getElementById('gamePage'),
+    ranking: document.getElementById('rankingPage'),
+};
+
+function showPage(pageKey) {
+    // Ocultar todas as páginas
+    Object.values(pages).forEach(page => page.classList.remove('show'));
+    // Mostrar a página desejada
+    if (pages[pageKey]) {
+        pages[pageKey].classList.add('show');
+    }
+}
+
+// Botões de navegação
+const playBtn = document.getElementById('playBtn');
+const leaderboardMenuBtn = document.getElementById('leaderboardMenuBtn');
+const backToMenuBtn = document.getElementById('backToMenuBtn');
+
+if (playBtn) playBtn.addEventListener('click', () => {
+    showPage('menu'); // Mostrar modal de nome
+    setTimeout(() => {
+        const nameModal = document.getElementById('nameModal');
+        if (nameModal) nameModal.classList.add('show');
+    }, 100);
+});
+
+if (leaderboardMenuBtn) leaderboardMenuBtn.addEventListener('click', () => {
+    showPage('ranking');
+    loadAndDisplayRanking();
+});
+
+if (backToMenuBtn) backToMenuBtn.addEventListener('click', () => {
+    showPage('menu');
+});
+
 let realMouseX = 0;
 let realMouseY = 0;
 let proximityCounter = 0;
@@ -60,20 +98,14 @@ async function sha256(str) {
 }
 
 // Elementos do novo fluxo/start
-const startModal = document.getElementById('startModal');
 const playerNameInput = document.getElementById('playerNameInput');
 const startGameBtn = document.getElementById('startGameBtn');
 const victoryTimeDisplay = document.getElementById('victoryTimeDisplay');
 const leaderboardEl = document.getElementById('leaderboard');
 const bgCatcher = document.getElementById('bgCatcher');
 const liveTimer = document.getElementById('liveTimer');
-
-// Elementos do modal de leaderboard
-const leaderboardModal = document.getElementById('leaderboardModal');
-const leaderboardList = document.getElementById('leaderboardList');
-const viewLeaderboardBtn = document.getElementById('viewLeaderboardBtn');
-const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
-const backLeaderboardBtn = document.getElementById('backLeaderboardBtn');
+const nameModal = document.getElementById('nameModal');
+const rankingList = document.getElementById('rankingList');
 
 // API base (defina window.API_BASE = 'https://seu-servidor' em index.html se quiser usar o servidor)
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
@@ -177,7 +209,8 @@ if (startGameBtn) startGameBtn.addEventListener('click', () => {
     playerName = val || 'Jogador';
     try { localStorage.setItem('jogoDoNunca_lastName', playerName); } catch (e) {}
     // iniciar jogo
-    startModal.style.display = 'none';
+    nameModal.classList.remove('show');
+    showPage('game');
     startTime = Date.now();
     elapsedMs = 0;
     proximityCounter = 0;
@@ -185,11 +218,11 @@ if (startGameBtn) startGameBtn.addEventListener('click', () => {
     gameActive = true;
 });
 
-// View Leaderboard button handler
-if (viewLeaderboardBtn) viewLeaderboardBtn.addEventListener('click', () => {
+// View Leaderboard button handler (from game page - if needed)
+const loadAndDisplayRanking = () => {
     const entries = loadLeaderboard();
     if (!entries || entries.length === 0) {
-        leaderboardList.innerHTML = '<div class="empty-state">📊 Nenhum resultado ainda — seja o primeiro!</div>';
+        rankingList.innerHTML = '<div class="empty-state">📊 Nenhum resultado ainda — seja o primeiro!</div>';
     } else {
         const html = entries.map((e, i) => {
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
@@ -199,22 +232,15 @@ if (viewLeaderboardBtn) viewLeaderboardBtn.addEventListener('click', () => {
                 <span class="entry-time">${formatTime(e.timeMs)}</span>
             </div>`;
         }).join('');
-        leaderboardList.innerHTML = html;
+        rankingList.innerHTML = html;
     }
-    leaderboardModal.classList.add('show');
-});
-
-// Close leaderboard modal
-if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', () => {
-    leaderboardModal.classList.remove('show');
-});
-
-if (backLeaderboardBtn) backLeaderboardBtn.addEventListener('click', () => {
-    leaderboardModal.classList.remove('show');
-});
+};
 
 // Auto-focus input and prefill last name
 window.addEventListener('load', () => {
+    // Mostrar a página do menu inicialmente
+    showPage('menu');
+    
     try {
         const last = localStorage.getItem('jogoDoNunca_lastName');
         if (last && playerNameInput) playerNameInput.value = last;

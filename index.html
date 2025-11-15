@@ -21,48 +21,69 @@
     <!-- ===== FIM DA CONFIGURAÇÃO ===== -->
 </head>
 <body>
-    <div class="container">
-        <h1>O Jogo do Nunca</h1>
-        <p class="subtitle">Tente clicar no botão se conseguir... 😈</p>
-        
-        <button id="evasiveBtn" class="evasive-button">CLIQUE AQUI!</button>
-        
-        <div class="info">
-            <p>⚠️ Aviso: Seu mouse está sendo traidor...</p>
+    <!-- ===== PÁGINA 1: MENU INICIAL ===== -->
+    <div id="menuPage" class="page show">
+        <div class="container">
+            <h1>O Jogo do Nunca</h1>
+            <p class="subtitle">Tente clicar no botão se conseguir... 😈</p>
+            
+            <div class="menu-buttons">
+                <button id="playBtn" class="menu-btn primary">🎮 JOGAR</button>
+                <button id="leaderboardMenuBtn" class="menu-btn secondary">🏆 RANKING</button>
+            </div>
+            
+            <div class="info">
+                <p>⚠️ Aviso: Seu mouse está sendo traidor...</p>
+                <p>💡 Dica: Pressione F1 para ouvir visitantes globais</p>
+            </div>
         </div>
-        <div id="liveTimer" class="live-timer">Tempo: --:--.---</div>
     </div>
 
+    <!-- ===== PÁGINA 2: JOGO ===== -->
+    <div id="gamePage" class="page">
+        <div class="container">
+            <h1>O Jogo do Nunca</h1>
+            <p class="subtitle">Tente clicar no botão se conseguir... 😈</p>
+            
+            <button id="evasiveBtn" class="evasive-button">CLIQUE AQUI!</button>
+            
+            <div class="info">
+                <p>⚠️ Aviso: Seu mouse está sendo traidor...</p>
+            </div>
+            <div id="liveTimer" class="live-timer">Tempo: --:--.---</div>
+        </div>
+    </div>
+
+    <!-- ===== PÁGINA 3: RANKING ===== -->
+    <div id="rankingPage" class="page">
+        <div class="container ranking-container">
+            <h1>🏆 RANKING GLOBAL</h1>
+            
+            <div id="rankingList" class="ranking-list"></div>
+            
+            <div class="ranking-actions">
+                <button id="backToMenuBtn" class="back-menu-btn">← VOLTAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: INSERIR NOME ===== -->
+    <div id="nameModal" class="name-modal">
+        <div class="name-content">
+            <h2>Qual é o seu nome?</h2>
+            <p>Digite seu nome para começar o desafio:</p>
+            <input id="playerNameInput" type="text" placeholder="Seu nome" maxlength="24" />
+            <button id="startGameBtn" class="start-btn primary">INICIAR JOGO</button>
+        </div>
+    </div>
+
+    <!-- ===== ELEMENTOS DO JOGO ===== -->
     <div id="fakeCursor"></div>
     <div id="trollMessage" class="troll-message"></div>
     <div id="floatingText" class="floating-text"></div>
-
-    <!-- Modal de início: pede o nome do jogador -->
-    <div id="startModal" class="start-modal">
-        <div class="start-content">
-            <h2>Pronto para jogar?</h2>
-            <p>Digite seu nome para começar o desafio:</p>
-            <input id="playerNameInput" type="text" placeholder="Seu nome" maxlength="24" />
-            <button id="startGameBtn" class="start-btn primary">INICIAR</button>
-            <button id="viewLeaderboardBtn" class="start-btn secondary">VER TOP 10</button>
-        </div>
-    </div>
-
-    <!-- Modal para exibir Top 10 -->
-    <div id="leaderboardModal" class="leaderboard-modal">
-        <div class="leaderboard-content">
-            <div class="leaderboard-header">
-                <h2>🏆 TOP 10</h2>
-                <button id="closeLeaderboardBtn" class="close-btn">&times;</button>
-            </div>
-            <div id="leaderboardList" class="leaderboard-list"></div>
-            <button id="backLeaderboardBtn" class="back-btn">VOLTAR</button>
-        </div>
-    </div>
-
-    <!-- elemento que captura cliques no fundo -->
     <div id="bgCatcher" aria-hidden="true"></div>
 
+    <!-- ===== MODAL: VITÓRIA ===== -->
     <div id="victoryModal" class="victory-modal">
         <div class="victory-content">
             <h2>🎉 PARABÉNS! 🎉</h2>
@@ -71,7 +92,7 @@
                 <p id="victoryTimeDisplay">Você é um HERÓI! 🏆</p>
                 <div id="leaderboard" class="leaderboard"></div>
             </div>
-            <button id="restartBtn" class="restart-btn">RECOMEÇAR</button>
+            <button id="restartBtn" class="restart-btn">JOGAR NOVAMENTE</button>
         </div>
     </div>
 
