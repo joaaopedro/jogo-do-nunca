@@ -183,10 +183,9 @@ function handlePointerDown(e) {
     // evitar duplicados muito próximos (pointerdown + mousedown)
     if (isDuplicatePointerEvent(e)) return;
 
-    // Se for um pointer event e não for do tipo 'mouse', ignorar (queremos apenas cliques de mouse)
-    if (e.pointerType && e.pointerType !== 'mouse') return;
-
-    // contar apenas cliques de mouse esquerdo (se informado)
+    // Garantir que seja um evento de mouse e que o botão esquerdo esteja pressionado
+    // e.buttons indica os botões atualmente pressionados (bitmask). Em hover, e.buttons normalmente é 0.
+    if (typeof e.buttons === 'number' && (e.buttons & 1) === 0) return;
     if (typeof e.button === 'number' && e.button !== 0) return;
 
     // coordenadas do clique (fallbacks seguros)
@@ -232,13 +231,10 @@ function handlePointerDown(e) {
     }
 }
 
-// Anexar handler: usar pointerdown quando disponível para evitar duplicação
-const handlerOptions = { capture: true };
-if (window.PointerEvent) {
-    document.addEventListener('pointerdown', handlePointerDown, handlerOptions);
-} else {
-    document.addEventListener('mousedown', handlePointerDown, handlerOptions);
-}
+// Anexar handler: usar somente 'mousedown' (evita alterações por pointer events e duplicação)
+// Não usar capture para reduzir a chance de interceptar eventos inesperados.
+const handlerOptions = { capture: false };
+document.addEventListener('mousedown', handlePointerDown, handlerOptions);
 
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
