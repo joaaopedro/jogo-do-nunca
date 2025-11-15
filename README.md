@@ -338,95 +338,121 @@ Divirta-se!
 
 Jogo interativo onde você tenta clicar em um botão impossível!
 
-## 🚀 Como rodar (SEM servidor)
+## 🚀 Deploy no Render
 
-### Opção 1: Apenas Local (sem ranking global)
-1. Abra `index.html` diretamente no navegador
-2. O jogo funciona completamente offline
-3. Rankings ficam salvos apenas no seu navegador
+### 1. Criar conta no Render
+- Acesse: https://render.com/
+- Crie uma conta gratuita
+- Conecte com GitHub
 
-### Opção 2: Com servidor local simples
-Use Python (já vem instalado no Windows 10/11):
+### 2. Fazer Deploy
+1. Faça push do código para o GitHub:
 ```bash
-cd c:\Projetos\jogo-do-nunca
-python -m http.server 8000
+git add .
+git commit -m "feat: configura deploy no Render"
+git push origin main
 ```
-Depois abra: `http://localhost:8000`
 
-### Opção 3: Live Server (VS Code)
-1. Instale a extensão "Live Server" no VS Code
-2. Clique com botão direito em `index.html`
-3. Escolha "Open with Live Server"
+2. No Render Dashboard:
+   - Clique em "New +"
+   - Escolha "Web Service"
+   - Conecte seu repositório GitHub
+   - Configure:
+     - **Name**: `jogo-do-nunca-api`
+     - **Environment**: `Node`
+     - **Build Command**: `npm install`
+     - **Start Command**: `npm start`
+     - **Plan**: `Free`
 
-## 🌐 Para ranking global (opcional)
+3. Clique em "Create Web Service"
 
-Se você quiser ranking compartilhado entre usuários:
+4. Copie a URL gerada (ex: `https://jogo-do-nunca-api.onrender.com`)
 
-### Instalar Node.js
-1. Baixe em: https://nodejs.org/
-2. Instale a versão LTS
-3. Reinicie o terminal
+### 3. Configurar Frontend
+Edite `index.html` e altere:
+```javascript
+window.API_BASE = 'https://jogo-do-nunca-api.onrender.com';
+```
 
-### Depois da instalação:
+### 4. Deploy do Frontend (GitHub Pages)
 ```bash
-cd c:\Projetos\jogo-do-nunca
+# Habilite GitHub Pages nas configurações do repositório
+# Branch: main, Folder: / (root)
+```
+
+Pronto! Seu jogo estará online em:
+- Frontend: `https://seu-usuario.github.io/jogo-do-nunca/`
+- Backend: `https://jogo-do-nunca-api.onrender.com`
+
+## 🎮 Como jogar localmente
+
+### Frontend
+1. Abra `index.html` no navegador
+2. Ou use Python: `python -m http.server 8000`
+3. Ou Live Server do VS Code
+
+### Backend (opcional para desenvolvimento)
+```bash
 npm install
 npm start
-```
-
-O servidor rodará em `http://localhost:3000`
-
-### Configurar frontend:
-No arquivo `index.html`, descomente e ajuste:
-```javascript
-window.API_BASE = 'http://localhost:3000';
+# Servidor em http://localhost:10000
 ```
 
 ## 🔑 Recursos
 
-- ✅ Sistema de ranking local (sempre funciona)
-- ✅ Sistema de ranking global (requer servidor Node.js)
-- ✅ Contador de visitas global (opcional)
+- ✅ Ranking local (funciona offline)
+- ✅ Ranking global (Render + GitHub Pages)
+- ✅ Contador de visitas global
 - ✅ Reset de ranking com senha (Ctrl+F1)
-- ✅ Suporte a touch/mouse/caneta
+- ✅ Suporte touch/mouse/caneta
 - ✅ Cursor invertido e botão evasivo
-- ✅ GIFs animados nos cantos
+- ✅ GIFs animados
 
 ## 🔐 Admin
 
-- **Reset do ranking**: Pressione `Ctrl+F1` e digite a senha
-- Senha padrão: `JpGv1209`
-- Reseta o ranking local sempre (funciona offline)
-- Reseta o ranking global se servidor estiver configurado
+- **Reset**: `Ctrl+F1` → senha: `JpGv1209`
+- Reseta ranking local e global
 
 ## 📁 Estrutura
 
 ```
 jogo-do-nunca/
-├── index.html          # Frontend (funciona sozinho)
+├── index.html          # Frontend
 ├── style.css           # Estilos
-├── script.js           # Lógica do jogo
-├── imagens/            # GIFs animados
-├── server.js           # Backend API (OPCIONAL)
-├── package.json        # Dependências Node (OPCIONAL)
-└── .env                # Configurações (OPCIONAL)
+├── script.js           # Lógica
+├── imagens/            # GIFs
+├── server.js           # Backend API
+├── package.json        # Dependências
+├── render.yaml         # Config Render
+└── README.md           # Este arquivo
 ```
 
-## 🎮 Como jogar
+## 🌐 Endpoints da API
 
-1. Clique em "Jogar"
-2. Digite seu nome
-3. Tente clicar no botão (boa sorte!)
-4. Veja seu tempo no ranking
+- `GET /` - Informações da API
+- `GET /health` - Health check
+- `POST /visit` - Registrar visita
+- `POST /score` - Enviar score
+  ```json
+  { "name": "Jogador", "timeMs": 12345 }
+  ```
+- `GET /stats` - Estatísticas
+- `POST /admin/reset` - Reset (requer senha SHA-256)
 
-### Easter Eggs 🥚
-- **SHIFT**: Mostra cursor real (tira inversão)
-- **CTRL**: Segura o botão no lugar
-- **F1**: Ouve quantas pessoas já visitaram (requer servidor)
-- **CTRL+F1**: Reset do ranking (requer senha de admin)
+## 🐛 Troubleshooting
 
-## 📝 Notas
+### Render dorme após 15min de inatividade
+- Primeira requisição após sleep leva ~30s
+- É normal no plano Free
 
-- O jogo funciona 100% sem servidor (ranking fica só local)
-- Para ranking global compartilhado, precisa do servidor Node.js
-- Todos os dados locais ficam salvos no localStorage do navegador
+### CORS Error
+- Certifique-se que a URL da API está correta no `index.html`
+- O Render deve estar online (verifique o dashboard)
+
+### Dados perdidos no Render
+- O plano Free não persiste dados entre deploys
+- Para persistência permanente, use um banco de dados (ex: MongoDB Atlas)
+
+## 📝 Licença
+
+MIT

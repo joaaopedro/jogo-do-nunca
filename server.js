@@ -5,8 +5,11 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+const PORT = process.env.PORT || 10000;
+
+// Em produção (Render), usar /tmp para arquivos temporários
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const DATA_DIR = IS_PRODUCTION ? '/tmp/data' : path.join(__dirname, 'data');
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const VISITS_FILE = path.join(DATA_DIR, 'visits.json');
 
@@ -15,8 +18,7 @@ const ADMIN_PASSWORD_HASH = 'd23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a4374
 
 // Configurar CORS para permitir requisições do frontend
 app.use(cors({
-    origin: true, // Permite qualquer origem em desenvolvimento
-    credentials: true,
+    origin: '*',
     methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-admin-pass-sha256', 'x-admin-password']
 }));
@@ -87,14 +89,23 @@ async function saveVisits(visits) {
 // GET / - Página inicial do servidor
 app.get('/', (req, res) => {
     res.json({ 
-        message: 'Servidor do Jogo do Nunca',
+        status: 'online',
+        message: 'API do Jogo do Nunca',
+        version: '1.0.0',
         endpoints: {
             'POST /visit': 'Registrar visita',
-            'POST /score': 'Enviar score',
-            'GET /stats': 'Obter estatísticas',
-            'POST /admin/reset': 'Resetar leaderboard (requer senha)'
-        }
+            'POST /score': 'Enviar score (body: {name, timeMs})',
+            'GET /stats': 'Obter estatísticas globais',
+            'POST /admin/reset': 'Resetar leaderboard (requer senha SHA-256)',
+            'GET /health': 'Health check'
+        },
+        documentation: 'https://github.com/seu-usuario/jogo-do-nunca'
     });
+});
+
+// GET /health - Health check simples
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // POST /visit - Registrar visita
@@ -204,15 +215,39 @@ app.delete('/admin/reset-leaderboard', resetHandler);
 app.post('/reset', resetHandler);
 app.delete('/reset', resetHandler);
 
+// Tratamento de erros global
+app.use((err, req, res, next) => {
+    console.error('Erro não tratado:', err);
+    res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: IS_PRODUCTION ? 'Algo deu errado' : err.message
+    });
+});
+
+// Rota 404
+app.use((req, res) => {
+    res.status(404).json({ 
+        error: 'Endpoint não encontrado',
+        path: req.path,
+        method: req.method
+    });
+});
+
 // Iniciar servidor
 initDataFiles().then(() => {
-    app.listen(PORT, () => {
-        console.log(`\n🚀 Servidor rodando em http://localhost:${PORT}`);
-        console.log(`📊 Endpoints disponíveis:`);
-        console.log(`   GET  /              - Informações do servidor`);
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n🚀 Servidor rodando em http://0.0.0.0:${PORT}`);
+        console.log(`📊 Ambiente: ${IS_PRODUCTION ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}`);
+        console.log(`📁 Diretório de dados: ${DATA_DIR}`);
+        console.log(`\n📚 Endpoints disponíveis:`);
+        console.log(`   GET  /              - Informações da API`);
+        console.log(`   GET  /health        - Health check`);
         console.log(`   POST /visit         - Registrar visita`);
         console.log(`   POST /score         - Enviar score`);
         console.log(`   GET  /stats         - Obter estatísticas`);
-        console.log(`   POST /admin/reset   - Resetar leaderboard (requer senha)\n`);
+        console.log(`   POST /admin/reset   - Resetar leaderboard\n`);
     });
+}).catch(err => {
+    console.error('❌ Erro fatal ao inicializar servidor:', err);
+    process.exit(1);
 });
