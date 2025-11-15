@@ -17,8 +17,9 @@ let gameActive = true;
 let shiftPressed = false;
 let ctrlPressed = false;
 
-const windowWidth = window.innerWidth;
-const windowHeight = window.innerHeight;
+// Ler dimensões dinamicamente (ajuda quando a janela é redimensionada)
+function getWindowWidth() { return window.innerWidth; }
+function getWindowHeight() { return window.innerHeight; }
 
 const trollMessages = [
     '😈 Quase! Você estava tão pertinho que deu até dó — tenta de novo!',
@@ -114,8 +115,8 @@ document.addEventListener('mousemove', (e) => {
     realMouseY = e.clientY;
 
     // Inverter a posição do mouse (efeito trolleador)
-    let invertedX = isInvertedX ? windowWidth - realMouseX : realMouseX;
-    let invertedY = isInvertedY ? windowHeight - realMouseY : realMouseY;
+    let invertedX = isInvertedX ? getWindowWidth() - realMouseX : realMouseX;
+    let invertedY = isInvertedY ? getWindowHeight() - realMouseY : realMouseY;
 
     // Se SHIFT estiver pressionado, mostrar posição real
     if (shiftPressed) {
@@ -158,24 +159,29 @@ evasiveBtn.addEventListener('click', (e) => {
 });
 
 // Contar apenas cliques falhados do mouse (quando o usuário clica em outro lugar que não seja o botão)
-// Usamos 'mousedown' e verificamos event.button === 0 (botão esquerdo do mouse)
-document.addEventListener('mousedown', (e) => {
+// Normalizamos pointerdown/mousedown para ter suporte consistente a mouse/pointers
+function handlePointerDown(e) {
     if (!gameActive) return;
 
-    // contar apenas cliques de mouse esquerdo
+    // Se for um pointer event e não for do tipo 'mouse', ignorar (queremos apenas cliques de mouse)
+    if (e.pointerType && e.pointerType !== 'mouse') return;
+
+    // contar apenas cliques de mouse esquerdo (se informado)
     if (typeof e.button === 'number' && e.button !== 0) return;
+
+    // coordenadas do clique (fallbacks seguros)
+    const clickX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
+    const clickY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
 
     // se clicou no próprio botão (verificação por bounding rect é mais confiável que target)
     const btnRectCheck = evasiveBtn.getBoundingClientRect();
-    const clickX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
-    const clickY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
     if (clickX >= btnRectCheck.left && clickX <= btnRectCheck.right && clickY >= btnRectCheck.top && clickY <= btnRectCheck.bottom) {
         return;
     }
 
     // ignorar cliques em UI/controle (modal, restart, mensagens)
-    if (e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
-    if (e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
+    if (e.target && e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
+    if (e.target && e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
 
     // é um clique falhado do mouse
     failCount++;
@@ -194,7 +200,11 @@ document.addEventListener('mousedown', (e) => {
     if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
         spawnCornerGif();
     }
-}, true);
+}
+
+// Anexar handler tanto para pointerdown (moderno) quanto para mousedown (fallback)
+document.addEventListener('pointerdown', handlePointerDown, true);
+document.addEventListener('mousedown', handlePointerDown, true);
 
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
@@ -242,8 +252,8 @@ function moveButtonAway() {
     }
 
     // Gerar posição aleatória dentro da viewport, evitando a borda
-    const maxX = windowWidth - 200;
-    const maxY = windowHeight - 100;
+    const maxX = getWindowWidth() - 200;
+    const maxY = getWindowHeight() - 100;
     const minX = 100;
     const minY = 100;
 
@@ -312,8 +322,8 @@ function createFloatingText(text) {
     floatingText.textContent = text;
     
     // posição aleatória
-    const randomX = Math.random() * (windowWidth - 120) + 40;
-    const randomY = Math.random() * (windowHeight - 160) + 60;
+    const randomX = Math.random() * (getWindowWidth() - 120) + 40;
+    const randomY = Math.random() * (getWindowHeight() - 160) + 60;
     floatingText.style.left = randomX + 'px';
     floatingText.style.top = randomY + 'px';
 
