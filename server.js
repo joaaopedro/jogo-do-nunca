@@ -28,6 +28,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Confiar no proxy do Render e responder preflight CORS
+app.set('trust proxy', 1);
+app.options('*', cors(corsOptions));
 
 // Middleware para logs detalhados
 app.use((req, res, next) => {
@@ -128,12 +131,12 @@ app.get('/', (req, res) => {
     });
 });
 
-// GET /health - Health check
-app.get('/health', async (req, res) => {
+// Health handler reutilizável
+async function healthHandler(req, res) {
     try {
         const leaderboard = await loadLeaderboard();
         const visits = await loadVisits();
-        res.json({ 
+        res.json({
             status: 'ok',
             timestamp: new Date().toISOString(),
             data: {
@@ -142,12 +145,13 @@ app.get('/health', async (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).json({ 
-            status: 'error',
-            message: err.message 
-        });
+        res.status(500).json({ status: 'error', message: err.message });
     }
-});
+}
+
+// GET /health - Health check (+ aliases e HEAD)
+app.get(['/health', '/health/', '/healthz', '/healthcheck'], healthHandler);
+app.head('/health', (_req, res) => res.sendStatus(200));
 
 // POST /visit - Registrar visita
 app.post('/visit', async (req, res) => {
@@ -166,6 +170,16 @@ app.post('/visit', async (req, res) => {
             error: 'Erro ao registrar visita',
             message: err.message 
         });
+    }
+});
+
+// GET /visit - Consultar visitas (sem incrementar)
+app.get('/visit', async (req, res) => {
+    try {
+        const visits = await loadVisits();
+        res.json({ success: true, visits: visits.count });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao consultar visitas', message: err.message });
     }
 });
 
@@ -212,8 +226,8 @@ app.post('/score', async (req, res) => {
     }
 });
 
-// GET /stats - Obter estatísticas
-app.get('/stats', async (req, res) => {
+// GET /stats - Obter estatísticas (aceita barra final)
+app.get(['/stats', '/stats/'], async (req, res) => {
     try {
         const leaderboard = await loadLeaderboard();
         const visits = await loadVisits();
@@ -288,6 +302,29 @@ app.post('/admin/reset', async (req, res) => {
             error: 'Erro ao resetar leaderboard',
             message: err.message 
         });
+    }
+});
+
+// Listar rotas registradas para debug rápido
+app.get('/__routes', (_req, res) => {
+    try {
+        const routes = [];
+        app._router.stack.forEach((m) => {
+            if (m.route && m.route.path) {
+                const methods = Object.keys(m.route.methods).map(k => k.toUpperCase());
+                routes.push({ path: m.route.path, methods });
+            } else if (m.name === 'router' && m.handle.stack) {
+                m.handle.stack.forEach((h) => {
+                    if (h.route && h.route.path) {
+                        const methods = Object.keys(h.route.methods).map(k => k.toUpperCase());
+                        routes.push({ path: h.route.path, methods });
+                    }
+                });
+            }
+        });
+        res.json({ routes });
+    } catch (e) {
+        res.status(500).json({ error: 'Falha ao inspecionar rotas', message: e.message });
     }
 });
 
