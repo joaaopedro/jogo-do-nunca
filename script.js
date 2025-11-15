@@ -160,8 +160,28 @@ evasiveBtn.addEventListener('click', (e) => {
 
 // Contar apenas cliques falhados do mouse (quando o usuário clica em outro lugar que não seja o botão)
 // Normalizamos pointerdown/mousedown para ter suporte consistente a mouse/pointers
+// pequeno dedupe para evitar contagens duplicadas quando ambos pointerdown e mousedown
+let __lastPointerDown = { time: 0, x: 0, y: 0, button: null };
+function isDuplicatePointerEvent(e) {
+    const now = Date.now();
+    const x = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
+    const y = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
+    const btn = (typeof e.button === 'number') ? e.button : null;
+    if (now - __lastPointerDown.time < 60 && Math.abs(x - __lastPointerDown.x) < 6 && Math.abs(y - __lastPointerDown.y) < 6 && btn === __lastPointerDown.button) {
+        return true;
+    }
+    __lastPointerDown.time = now;
+    __lastPointerDown.x = x;
+    __lastPointerDown.y = y;
+    __lastPointerDown.button = btn;
+    return false;
+}
+
 function handlePointerDown(e) {
     if (!gameActive) return;
+
+    // evitar duplicados muito próximos (pointerdown + mousedown)
+    if (isDuplicatePointerEvent(e)) return;
 
     // Se for um pointer event e não for do tipo 'mouse', ignorar (queremos apenas cliques de mouse)
     if (e.pointerType && e.pointerType !== 'mouse') return;
@@ -202,9 +222,13 @@ function handlePointerDown(e) {
     }
 }
 
-// Anexar handler tanto para pointerdown (moderno) quanto para mousedown (fallback)
-document.addEventListener('pointerdown', handlePointerDown, true);
-document.addEventListener('mousedown', handlePointerDown, true);
+// Anexar handler: usar pointerdown quando disponível para evitar duplicação
+const handlerOptions = { capture: true };
+if (window.PointerEvent) {
+    document.addEventListener('pointerdown', handlePointerDown, handlerOptions);
+} else {
+    document.addEventListener('mousedown', handlePointerDown, handlerOptions);
+}
 
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
