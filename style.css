@@ -122,27 +122,36 @@ h1 {
     transform: translateX(-50%);
     background: #ff6b6b;
     color: white;
-    padding: 15px 30px;
-    border-radius: 50px;
-    font-weight: bold;
-    font-size: 1.2em;
-    box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+    padding: 8px 18px;
+    min-width: 220px;
+    border-radius: 32px;
+    font-weight: 600;
+    font-size: 1.0em;
+    text-align: center;
+    letter-spacing: 0.2px;
+    box-shadow: 0 4px 14px rgba(255, 107, 107, 0.32);
     display: none;
     z-index: 10000;
-    animation: slideDown 0.5s ease-out;
+    animation: slideDown 0.45s cubic-bezier(0.2,0.9,0.2,1);
 }
 
 .troll-message.show {
     display: block;
 }
 
+.troll-message.show {
+    transform: translateX(-50%) scale(1.00);
+}
+
 .floating-text {
     position: fixed;
     pointer-events: none;
-    font-size: 1.5em;
-    font-weight: bold;
-    animation: floatUp 2s ease-out forwards;
-    z-index: 9999;
+    font-size: 1.0em; /* base size; individual items can override inline */
+    font-weight: 600;
+    text-shadow: 0 3px 8px rgba(0,0,0,0.22);
+    animation: floatUp 1.4s ease-out forwards;
+    z-index: 10002;
+    will-change: transform, opacity;
 }
 
 @keyframes slideDown {

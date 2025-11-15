@@ -9,6 +9,7 @@ const restartBtn = document.getElementById('restartBtn');
 let realMouseX = 0;
 let realMouseY = 0;
 let failCount = 0;
+let proximityCounter = 0;
 let isInvertedX = true;
 let isInvertedY = true;
 let buttonSpeed = 1;
@@ -20,28 +21,28 @@ const windowWidth = window.innerWidth;
 const windowHeight = window.innerHeight;
 
 const trollMessages = [
-    '😈 Quase!',
-    '🤔 Errou!',
-    '⚡ Tá longe!',
-    '💀 Boa tentativa',
-    '🎪 Escapa dele!',
-    '🚀 Muito lento!',
-    '🌪️ Virou areia!',
-    '🎯 Errou o alvo!',
-    '😂 Continua tentando',
-    '🔥 Tá pegando fogo!',
-    '👻 Fantasminha esperto',
-    '🎭 Tá difícil né?',
+    '😈 Quase! Você estava tão pertinho que deu até dó — tenta de novo!',
+    '🤔 Errou! Não desanima, é só mais uma tentativa (ou mil).',
+    '⚡ Tá longe! Vai, acelera essa mão aí, campeão!',
+    '💀 Boa tentativa — o botão tem vida própria hoje, sério.',
+    '🎪 Escapa dele! Parece que o botão faz parkour nas horas vagas.',
+    '🚀 Muito lento! O botão já tá na velocidade da luz pra te trollar.',
+    '🌪️ Virou areia! Perdeu o botão no vórtice do universo, tenta de novo.',
+    '🎯 Errou o alvo! Nem todo herói acerta na primeira vez (ou na 200ª).',
+    '😂 Continua tentando — a persistência é a vingança do jogador.',
+    '🔥 Tá pegando fogo! Quase lá, senti o calor da vitória.',
+    '👻 Fantasminha esperto — o botão sumiu com estilo.',
+    '🎭 Tá difícil né? Isso que é entretenimento hardcore de verdade!',
 ];
 
 const floatingMessages = [
-    'Kkk',
-    'Virou areia!',
-    'Escapou!',
-    'Ué?',
-    'Nope!',
-    'Errou!',
-    'Tá bravinho?',
+    'Kkk, tentou de novo e errou — clássico!',
+    'Virou areia! O botão evaporou no ar... incrível.',
+    'Escapou! O botão tá com sapatos novos.',
+    'Ué? Cadê o botão? Nem eu sei.',
+    'Nope! Hoje não é dia de click feliz.',
+    'Errou! Mas a graça tá na tentativa, não no resultado.',
+    'Tá bravinho? Respira, tenta outra vez, guerreiro.',
 ];
 
 // Detectar SHIFT sendo pressionado
@@ -115,6 +116,31 @@ evasiveBtn.addEventListener('click', (e) => {
     }
 });
 
+// Contar apenas cliques falhados (quando o usuário clica em outro lugar que não seja o botão)
+document.addEventListener('click', (e) => {
+    if (!gameActive) return;
+
+    // se clicou no próprio botão, não conta como falha
+    if (e.target === evasiveBtn) return;
+
+    // ignorar cliques em UI/controle (modal, restart, mensagens)
+    if (e.target.closest && (e.target.closest('.victory-content') || e.target.id === 'restartBtn')) return;
+    if (e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
+
+    // é um clique falhado
+    failCount++;
+    failCountDisplay.textContent = failCount;
+
+    // dar feedback sutil quando houver falha
+    if (failCount % 2 === 0) {
+        createFloatingText(floatingMessages[Math.floor(Math.random() * floatingMessages.length)]);
+    }
+    if (failCount % 5 === 0) {
+        evasiveBtn.classList.add('glitch');
+        setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
+    }
+}, true);
+
 // Trolagem: Inverter controles aleatoricamente
 setInterval(() => {
     if (!gameActive) return;
@@ -144,11 +170,11 @@ restartBtn.addEventListener('click', () => {
 function moveButtonAway() {
     if (!gameActive) return;
 
-    failCount++;
-    failCountDisplay.textContent = failCount;
+    // proximity-based escapes (do NOT count as failed clicks)
+    proximityCounter++;
 
-    // Mostrar mensagem troll aleatória
-    if (failCount % 3 === 0) {
+    // Mostrar mensagem troll aleatória baseada em aproximações
+    if (proximityCounter % 3 === 0) {
         showTrollMessage(trollMessages[Math.floor(Math.random() * trollMessages.length)]);
     }
 
@@ -191,23 +217,23 @@ function moveButtonAway() {
         evasiveBtn.style.background = colors[Math.floor(Math.random() * colors.length)];
     }
 
-    // Adicionar floating text
-    if (failCount % 2 === 0) {
+    // Adicionar floating text baseado na proximidade
+    if (proximityCounter % 2 === 0) {
         const floatMsg = floatingMessages[Math.floor(Math.random() * floatingMessages.length)];
         createFloatingText(floatMsg);
     }
 
-    // Efeito glitch a cada 5 tentativas
-    if (failCount % 5 === 0) {
+    // Efeito glitch a cada 5 aproximações
+    if (proximityCounter % 5 === 0) {
         evasiveBtn.classList.add('glitch');
         setTimeout(() => {
             evasiveBtn.classList.remove('glitch');
         }, 500);
     }
 
-    // Aumentar size do botão após 10 cliques falhados
-    if (failCount > 10) {
-        evasiveBtn.style.transform = `scale(${0.7 + failCount * 0.02})`;
+    // Aumentar size do botão após 10 aproximações (não confundir com cliques)
+    if (proximityCounter > 10) {
+        evasiveBtn.style.transform = `scale(${0.7 + proximityCounter * 0.02})`;
     }
 }
 
@@ -225,22 +251,35 @@ function createFloatingText(text) {
     floatingText.className = 'floating-text';
     floatingText.textContent = text;
     
-    const randomX = Math.random() * (windowWidth - 100) + 50;
-    const randomY = Math.random() * (windowHeight - 100) + 50;
-    
+    // posição aleatória
+    const randomX = Math.random() * (windowWidth - 120) + 40;
+    const randomY = Math.random() * (windowHeight - 160) + 60;
     floatingText.style.left = randomX + 'px';
     floatingText.style.top = randomY + 'px';
+
+    // cor aleatória e tamanho maior
     floatingText.style.color = [
         '#ff6b6b',
         '#4ecdc4',
         '#ffe66d',
         '#ff6348',
         '#95e1d3',
-    ][Math.floor(Math.random() * 5)];
-    
+        '#9b59b6',
+    ][Math.floor(Math.random() * 6)];
+
+    // tamanho aleatório menor e mais discreto entre ~0.9em e 1.2em
+    const size = Math.random() * 0.3 + 0.9;
+    floatingText.style.fontSize = size.toFixed(2) + 'em';
+    floatingText.style.fontWeight = '600';
+
+    // duração de animação mais curta para menos distração
+    const duration = (Math.random() * 0.6) + 1.0; // 1.0s - 1.6s
+    floatingText.style.animation = `floatUp ${duration}s ease-out forwards`;
+
     document.body.appendChild(floatingText);
-    
-    setTimeout(() => floatingText.remove(), 2000);
+
+    // remover quando a animação terminar (+ pequeno buffer)
+    setTimeout(() => floatingText.remove(), Math.round(duration * 1000) + 200);
 }
 
 function celebrateClick() {
