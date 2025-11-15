@@ -204,31 +204,87 @@ function handlePointerDown(e) {
 
     // se clicou no próprio botão (verificação por bounding rect é mais confiável que target)
     const btnRectCheck = evasiveBtn.getBoundingClientRect();
-    if (clickX >= btnRectCheck.left && clickX <= btnRectCheck.right && clickY >= btnRectCheck.top && clickY <= btnRectCheck.bottom) {
-        return;
-    }
+    const downOutsideButton = !(clickX >= btnRectCheck.left && clickX <= btnRectCheck.right && clickY >= btnRectCheck.top && clickY <= btnRectCheck.bottom);
 
     // ignorar cliques em UI/controle (modal, restart, mensagens)
     if (e.target && e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
     if (e.target && e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
 
-    // é um clique falhado do mouse
-    failCount++;
-    failCountDisplay.textContent = failCount;
-
-    // dar feedback sutil quando houver falha
-    if (failCount % 2 === 0) {
-        createFloatingText(floatingMessages[Math.floor(Math.random() * floatingMessages.length)]);
-    }
-    if (failCount % 5 === 0) {
-        evasiveBtn.classList.add('glitch');
-        setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
+    // Em vez de contar imediatamente no mousedown, registramos o evento e contamos apenas
+    // se o mouseup corresponder (mousedown+mouseup fora do botão). Isso previne false-positives.
+    if (!downOutsideButton) {
+        // se o mousedown foi dentro do botão, ignorar (possível tentativa de clique no botão)
+        return;
     }
 
-    // spawn pequeno de GIFs em cantos quando houver falhas
-    if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
-        spawnCornerGif();
+    // registrar pending mousedown para processar no mouseup
+    pendingMouseDown = {
+        x: clickX,
+        y: clickY,
+        time: Date.now(),
+        button: (typeof e.button === 'number') ? e.button : null
+    };
+    // limpar pending se não houver mouseup em 1.2s
+    if (pendingMouseDownTimeout) clearTimeout(pendingMouseDownTimeout);
+    pendingMouseDownTimeout = setTimeout(() => { pendingMouseDown = null; pendingMouseDownTimeout = null; }, 1200);
+}
+
+// estado de mousedown pendente para validar no mouseup
+let pendingMouseDown = null;
+let pendingMouseDownTimeout = null;
+
+function handleMouseUp(e) {
+    if (!gameActive) return;
+    // só processar mouseup do botão esquerdo
+    if (typeof e.button === 'number' && e.button !== 0) return;
+    if (!pendingMouseDown) return;
+
+    // coordenadas do mouseup
+    const upX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
+    const upY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
+
+    // se o mouseup ocorreu muito tarde, ignorar
+    if (Date.now() - pendingMouseDown.time > 1200) {
+        pendingMouseDown = null;
+        if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
+        return;
     }
+
+    // checar se tanto down quanto up foram fora do botão
+    const btnRect = evasiveBtn.getBoundingClientRect();
+    const downOutside = (pendingMouseDown.x < btnRect.left || pendingMouseDown.x > btnRect.right || pendingMouseDown.y < btnRect.top || pendingMouseDown.y > btnRect.bottom);
+    const upOutside = (upX < btnRect.left || upX > btnRect.right || upY < btnRect.top || upY > btnRect.bottom);
+
+    // ignorar se mouseup ocorreu em UI ou em elementos proibidos
+    if (e.target && e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) {
+        pendingMouseDown = null;
+        if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
+        return;
+    }
+
+    if (downOutside && upOutside) {
+        // é um clique falhado do mouse
+        failCount++;
+        failCountDisplay.textContent = failCount;
+
+        // dar feedback sutil quando houver falha
+        if (failCount % 2 === 0) {
+            createFloatingText(floatingMessages[Math.floor(Math.random() * floatingMessages.length)]);
+        }
+        if (failCount % 5 === 0) {
+            evasiveBtn.classList.add('glitch');
+            setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
+        }
+
+        // spawn pequeno de GIFs em cantos quando houver falhas
+        if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
+            spawnCornerGif();
+        }
+    }
+
+    // limpar pending
+    pendingMouseDown = null;
+    if (pendingMouseDownTimeout) { clearTimeout(pendingMouseDownTimeout); pendingMouseDownTimeout = null; }
 }
 
 // Anexar handler: usar somente 'mousedown' (evita alterações por pointer events e duplicação)
