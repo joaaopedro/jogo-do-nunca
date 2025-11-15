@@ -397,3 +397,18 @@ h1 {
     box-shadow: 0 6px 18px rgba(0,0,0,0.12);
     pointer-events: none;
 }
+
+/* visit info dentro do container */
+.visit-info {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    z-index: 4;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95em;
+    pointer-events: none;
+}

@@ -1,24 +1,299 @@
 # Jogo do Nunca 🎮
 
-Um site interativo e impossível de usar! O mouse se comporta de forma invertida e o botão sempre escapa.
+Um site troll interativo e impossível de usar! O mouse se comporta de forma **invertida** e o botão sempre **escapa**. Teste sua paciência e veja se consegue clicar no botão misterioso.
 
 ## 🎯 Objetivo
 
-Tente clicar no botão se conseguir... mas o mouse está contra você!
+Tente clicar no botão evasivo e entre para o **ranking global**! A competição é global — veja quantas pessoas já tentaram antes de você.
 
-### Como o site funciona:
+- ⏱️ **Cronômetro**: Quanto tempo você leva para clicar?
+- 🏆 **Ranking Global**: Seu tempo é salvo e comparado com o mundo inteiro
+- 👥 **Contador de Visitantes**: Acompanhe quantas pessoas já caíram nesta armadilha!
 
-- **Mouse Invertido**: Você move para a direita, o cursor vai para a esquerda (e vice-versa em ambos os eixos)
-- **Botão Escapista**: Quando você se aproxima, o botão muda de posição aleatoriamente
-- **Inversões Aleatórias**: A cada tempo, os eixos de inversão podem mudar sem aviso
-- **Dificuldade Progressiva**: O botão fica cada vez mais rápido conforme o tempo passa
-- **Efeitos Visuais**: Cores mudando, rotações, tremidas, mensagens troleiras aparecendo
+## 🎮 Como Funciona
 
-## 🎮 Cheat Codes
+### Game Mechanics
 
-Para os ninjas:
+- **🔄 Mouse Invertido**: Você move o mouse para a **direita**? Ele vai para a **esquerda** (e vice-versa em ambos os eixos)
+- **🏃 Botão Escapista**: Conforme você se aproxima, o botão **muda de posição aleatoriamente**
+- **📊 Timer em Tempo Real**: Veja o tempo passar enquanto luta contra a física invertida
+- **✨ Efeitos Visuais**: Animações coloridas, tremidas, glitches e emojis trolladores quando você falha
 
-- **SHIFT (Segurando)**: O mouse volta à posição correta!
+### Features
+
+✅ **Mouse Invertido Dinâmico**
+- Cálculo matemático em tempo real (windowWidth - mouseX)
+- Suave e responsivo
+
+✅ **Botão com IA Evasiva**
+- Evita você automaticamente quando próximo
+- Usa detecção de distância euclidiana
+
+✅ **Sistema de Ranking Global**
+- Backend Node.js com Express
+- Banco de dados persistente (data.json)
+- Top 10 leaderboard atualizado em tempo real
+- Sincronização com GitHub Pages via API
+
+✅ **Contador Global de Visitantes**
+- Rastreia quantas pessoas acessaram o site
+- Persiste entre sessões
+- Exibido em tempo real na interface
+
+✅ **Nome do Jogador**
+- Modal de início para coletar seu nome
+- Seu tempo é salvo com seu nome no ranking
+- Persistência local via localStorage
+
+✅ **Timer Visível**
+- Exibido dentro do container do jogo
+- Atualizado a cada frame com requestAnimationFrame
+- Mostra milissegundos para competição justa
+
+✅ **Autenticação Opcional**
+- API_KEY para proteger o servidor (env var)
+- x-api-key header no cliente
+- Fallback para localStorage se servidor indisponível
+
+## 🚀 Quick Start (Local)
+
+### Opção 1: Script Automático (Windows)
+```bash
+# Na pasta do projeto, execute:
+.\start-local.bat
+```
+O script irá:
+1. Instalar dependências (se necessário)
+2. Iniciar o servidor backend na porta 3000
+3. Iniciar servidor estático na porta 8000
+4. Abrir o navegador automaticamente
+
+### Opção 2: Manual
+
+**Terminal 1 — Backend (Node.js)**
+```bash
+cd server
+npm install
+npm start
+# Listening on http://localhost:3000
+```
+
+**Terminal 2 — Frontend (Estático)**
+```bash
+# Use Python:
+python -m http.server 8000
+
+# Ou use Node.js (http-server):
+npx http-server -p 8000
+```
+
+**Navegador**
+Abra: http://localhost:8000
+
+### Configuração da API
+
+No arquivo `index.html`, procure pela seção de configuração (logo após `<body>`):
+
+```javascript
+<script>
+  // 🔧 CONFIGURAÇÃO DA API
+  // Para usar o backend local, descomente a linha abaixo:
+  // window.API_BASE = 'http://localhost:3000';
+  
+  // Para usar backend em produção (ex: Render, Railway):
+  // window.API_BASE = 'https://seu-dominio-backend.com';
+  
+  // Autenticação (opcional):
+  // Somente necessário se seu servidor tiver API_KEY configurada
+  // window.API_KEY = 'sua-chave-secreta-aqui';
+</script>
+```
+
+## 🏗️ Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    GITHUB PAGES (Frontend)                   │
+│                  https://seu-site.github.io                  │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │  index.html, script.js, style.css (estáticos)        │   │
+│  │  - Inverted cursor, evasive button, timer, modal      │   │
+│  │  - Fetch API calls to backend (com fallback)          │   │
+│  └───────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                             ↓ API Calls
+                        (fetch headers)
+┌─────────────────────────────────────────────────────────────┐
+│              RENDER / RAILWAY (Backend API)                  │
+│              https://seu-backend.com                         │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │  Node.js + Express (server/index.js)                 │   │
+│  │  ├─ GET  /stats          → visits + leaderboard      │   │
+│  │  ├─ POST /visit          → increment visits          │   │
+│  │  └─ POST /score          → submit score + leaderboard│   │
+│  │                                                        │   │
+│  │  Persistence: data.json                              │   │
+│  │  └─ {visits: number, leaderboard: [{name, timeMs}]} │   │
+│  └───────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+
+Fallback: localStorage (se backend indisponível)
+```
+
+## 🛠️ Stack Técnico
+
+### Frontend
+- **HTML5**: Semântica, estrutura
+- **CSS3**: Animações (keyframes), gradientes, positioning
+- **Vanilla JavaScript**: Game loop (requestAnimationFrame), DOM manipulation
+- **Web APIs**: 
+  - localStorage (persistência local)
+  - Fetch API (chamadas HTTP)
+  - Web Speech API (leitura de contadores via voz - F1)
+  - Web Audio API (efeitos sonoros opcionais)
+
+### Backend
+- **Node.js**: Runtime JavaScript server-side
+- **Express**: Framework web minimalista
+- **body-parser**: Parse JSON
+- **CORS**: Cross-Origin Resource Sharing
+- **fs**: Persistência em arquivo (data.json)
+
+### DevOps
+- **GitHub Pages**: Hosting estático gratuito
+- **Render / Railway**: Hosting backend gratuito
+- **Local Testing**: Python http.server ou npx http-server
+
+## 📚 Endpoints da API
+
+**Base URL**: Configurada em `window.API_BASE` (index.html)
+
+### `GET /stats`
+Retorna estatísticas globais.
+
+**Response**:
+```json
+{
+  "visits": 1337,
+  "leaderboard": [
+    {"name": "João", "timeMs": 5234},
+    {"name": "Maria", "timeMs": 7891}
+  ]
+}
+```
+
+### `POST /visit`
+Incrementa o contador global de visitantes.
+
+**Headers** (opcional):
+```
+x-api-key: sua-chave-secreta
+```
+
+**Response**:
+```json
+{
+  "visits": 1338
+}
+```
+
+### `POST /score`
+Submete um tempo e retorna o leaderboard atualizado (top 10).
+
+**Body**:
+```json
+{
+  "name": "João",
+  "timeMs": 5234
+}
+```
+
+**Headers** (opcional):
+```
+x-api-key: sua-chave-secreta
+```
+
+**Response**:
+```json
+{
+  "leaderboard": [
+    {"name": "João", "timeMs": 5234},
+    {"name": "Maria", "timeMs": 7891}
+  ]
+}
+```
+
+## 🔐 Segurança
+
+### API Key (Opcional)
+
+Se você quer proteger seus endpoints:
+
+1. **No servidor** (`server/index.js`):
+   ```bash
+   export API_KEY="sua-chave-super-secreta"
+   npm start
+   ```
+
+2. **No cliente** (`index.html`):
+   ```javascript
+   window.API_KEY = 'sua-chave-super-secreta';
+   ```
+
+O cliente irá enviar a chave no header `x-api-key` automaticamente.
+
+### Rate Limiting
+
+Para produção, considere adicionar rate limiting (via middleware Express como `express-rate-limit`):
+```bash
+npm install express-rate-limit
+```
+
+## 📖 Deployment
+
+Veja o arquivo `DEPLOYMENT.md` para guias detalhados:
+- ✅ Local testing (start-local.bat)
+- ✅ Deploy no Render.com
+- ✅ Deploy no Railway.app
+- ✅ Troubleshooting comum
+
+## 🎓 Como Funciona o "Mouse Invertido"?
+
+O cálculo é bem simples:
+
+```javascript
+// Posição real do mouse
+const realMouseX = e.clientX;
+const realMouseY = e.clientY;
+
+// Posição invertida
+const invertedX = window.innerWidth - realMouseX;
+const invertedY = window.innerHeight - realMouseY;
+
+// Renderizar fake cursor nessa posição
+fakeCursor.style.left = invertedX + 'px';
+fakeCursor.style.top = invertedY + 'px';
+```
+
+Simples, mas eficaz! 🤯
+
+## 🎯 O Desafio
+
+Conseguir clicar no botão com o mouse invertido é **surpreendentemente difícil**. A maioria das pessoas leva entre 5 a 30 segundos. Os top jogadores? Menos de 2 segundos! 🚀
+
+Você consegue entrar para o ranking?
+
+## 📝 Licença
+
+MIT — Fique à vontade para copiar, modificar e distribuir!
+
+## 🤝 Contribuições
+
+Encontrou um bug? Quer adicionar um feature? Abra uma issue ou faça um PR!
+
+---
+
+**Feito com ❤️ (e um toque de trolismo)** 🎮
 - **CTRL (Segurando)**: O botão fica parado e não se move mais!
 
 ## 🎊 Quando conseguir clicar

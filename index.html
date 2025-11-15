@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O Jogo do Impossível</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- ===== CONFIGURAÇÃO DA API (Render/Railway/Local) ===== -->
+    <!-- Se você deployar o servidor em Render/Railway, coloque o URL aqui -->
+    <!-- Exemplo: https://jogo-do-nunca-server.onrender.com -->
+    <!-- Para testes locais, deixe descomentado como abaixo ou use http://localhost:3000 -->
+    <script>
+        // Descomente e configure conforme seu servidor:
+        // window.API_BASE = 'https://jogo-do-nunca-server.onrender.com';
+        // window.API_KEY = 'sua-chave-api-secreta'; // (opcional; só se o servidor usar API_KEY)
+        
+        // Para testes locais (se rodar start-local.bat):
+        // window.API_BASE = 'http://localhost:3000';
+    </script>
+    <!-- ===== FIM DA CONFIGURAÇÃO ===== -->
 </head>
 <body>
     <div class="container">
@@ -17,6 +31,7 @@
             <p>⚠️ Aviso: Seu mouse está sendo traidor...</p>
         </div>
         <div id="liveTimer" class="live-timer">Tempo: --:--.---</div>
+        <div id="visitInfo" class="visit-info">Visitas neste dispositivo: --</div>
     </div>
 
     <div id="fakeCursor"></div>

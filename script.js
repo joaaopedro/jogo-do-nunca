@@ -53,6 +53,50 @@ const victoryTimeDisplay = document.getElementById('victoryTimeDisplay');
 const leaderboardEl = document.getElementById('leaderboard');
 const bgCatcher = document.getElementById('bgCatcher');
 const liveTimer = document.getElementById('liveTimer');
+const visitInfoEl = document.getElementById('visitInfo');
+
+// API base (defina window.API_BASE = 'https://seu-servidor' em index.html se quiser usar o servidor)
+const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
+
+function buildAuthHeaders() {
+    const headers = {};
+    if (typeof window !== 'undefined' && window.API_KEY) {
+        headers['x-api-key'] = window.API_KEY;
+    }
+    return headers;
+}
+
+async function sendVisitToServer() {
+    if (!API_BASE) return null;
+    try {
+        const res = await fetch(`${API_BASE}/visit`, { method: 'POST', headers: buildAuthHeaders() });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.visits;
+    } catch (e) { return null; }
+}
+
+async function sendScoreToServer(name, timeMs) {
+    if (!API_BASE) return null;
+    try {
+        const res = await fetch(`${API_BASE}/score`, {
+            method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, buildAuthHeaders()),
+            body: JSON.stringify({ name: name, timeMs: timeMs })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.leaderboard;
+    } catch (e) { return null; }
+}
+
+async function fetchGlobalStats() {
+    if (!API_BASE) return null;
+    try {
+        const res = await fetch(`${API_BASE}/stats`, { headers: buildAuthHeaders() });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) { return null; }
+}
 
 // Timer / jogador
 let playerName = '';
@@ -132,6 +176,62 @@ window.addEventListener('load', () => {
     renderLeaderboard();
     // start the live timer loop
     requestAnimationFrame(tick);
+    // registrar visita neste dispositivo e atualizar badge
+    try {
+        const key = 'jogoDoNunca_visits_device';
+        let n = parseInt(localStorage.getItem(key) || '0', 10);
+        n = (isNaN(n) ? 0 : n) + 1;
+        localStorage.setItem(key, String(n));
+        const vi = document.getElementById('visitInfo');
+        if (vi) vi.textContent = `Visitas neste dispositivo: ${n}`;
+    } catch (err) {}
+    // tentar também notificar o servidor (global count) e obter stats
+    (async () => {
+        try {
+            const serverVisits = await sendVisitToServer();
+            if (serverVisits != null && visitInfoEl) {
+                visitInfoEl.textContent = `Visitas globais (contagem): ${serverVisits}`;
+            } else if (visitInfoEl) {
+                // se sem servidor, manter o contador local
+                const key = 'jogoDoNunca_visits_device';
+                visitInfoEl.textContent = `Visitas neste dispositivo: ${localStorage.getItem(key) || '0'}`;
+            }
+
+            // se servidor disponível, também preencher leaderboard global
+            const stats = await fetchGlobalStats();
+            if (stats && stats.leaderboard && Array.isArray(stats.leaderboard)) {
+                // renderizar leaderboard global (substitui o local one)
+                if (leaderboardEl) {
+                    const html = stats.leaderboard.map((e,i) => `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`).join('');
+                    leaderboardEl.innerHTML = html;
+                }
+            }
+        } catch (e) {}
+    })();
+    // Falar o número de visitas ao pressionar F1 (apenas local, por dispositivo)
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'F1') {
+            // prevenir comportamento padrão (help)
+            e.preventDefault();
+            try {
+                const key = 'jogoDoNunca_visits_device';
+                const n = localStorage.getItem(key) || '0';
+                const msg = `Visitas neste dispositivo: ${n}. Atenção: contagem global de usuários exige servidor.`;
+                if (window.speechSynthesis) {
+                    const u = new SpeechSynthesisUtterance(msg);
+                    // ajustar voz/volume se quiser
+                    u.lang = 'pt-BR';
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(u);
+                } else {
+                    alert(msg);
+                }
+            } catch (err) {
+                // fallback simples
+                alert('Não foi possível recuperar o contador de visitas.');
+            }
+        }
+    }, false);
 });
 
 // atualiza o timer em tempo real quando o jogo está ativo
@@ -592,8 +692,17 @@ function celebrateClick() {
 
     // salvar no leaderboard e renderizar
     try {
+        // salvar localmente
         saveScore(playerName || 'Jogador', elapsedMs);
         renderLeaderboard();
+        // tentar salvar remotamente (global leaderboard)
+        (async () => {
+            const remote = await sendScoreToServer(playerName || 'Jogador', elapsedMs);
+            if (remote && leaderboardEl) {
+                const html = remote.map((e,i) => `<div class="row"><div class="rank">#${i+1}</div><div class="name">${escapeHtml(e.name)}</div><div class="time">${formatTime(e.timeMs)}</div></div>`).join('');
+                leaderboardEl.innerHTML = html;
+            }
+        })();
     } catch (e) {}
 
     // Mostrar tempo no modal
