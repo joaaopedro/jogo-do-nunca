@@ -178,6 +178,19 @@ if (startGameBtn) startGameBtn.addEventListener('click', () => {
     gameActive = true;
 });
 
+// View Leaderboard button handler
+const viewLeaderboardBtn = document.getElementById('viewLeaderboardBtn');
+if (viewLeaderboardBtn) viewLeaderboardBtn.addEventListener('click', () => {
+    // Mostrar o leaderboard em um modal/alert simples
+    const entries = loadLeaderboard();
+    if (!entries || entries.length === 0) {
+        alert('📊 TOP 10\n\nNenhum resultado ainda — seja o primeiro!');
+        return;
+    }
+    const leaderboardText = entries.map((e, i) => `#${i+1} ${escapeHtml(e.name)} - ${formatTime(e.timeMs)}`).join('\n');
+    alert(`📊 TOP 10\n\n${leaderboardText}`);
+});
+
 // Auto-focus input and prefill last name
 window.addEventListener('load', () => {
     try {

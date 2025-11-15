@@ -360,6 +360,28 @@ h1 {
     border-radius: 999px;
     font-weight: 700;
     cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.start-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.start-btn:active {
+    transform: scale(0.95);
+}
+
+.start-btn.secondary {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    margin-left: 10px;
+}
+
+.start-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 /* Leaderboard inside victory modal */
