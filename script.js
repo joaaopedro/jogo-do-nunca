@@ -193,6 +193,15 @@ function handlePointerDown(e) {
     const clickX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
     const clickY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
 
+    // Debug: registrar eventos estranhos quando ativado
+    const CLICK_DEBUG = false; // mude para true para ver logs detalhados no console
+    if (CLICK_DEBUG) {
+        console.debug('[CLICK_DEBUG] event:', { type: e.type, isTrusted: e.isTrusted, pointerType: e.pointerType, button: e.button, clientX: clickX, clientY: clickY, target: e.target && (e.target.id || e.target.className || e.target.tagName) });
+    }
+
+    // Garantir que seja um evento legítimo de clique do usuário
+    if (typeof e.isTrusted !== 'undefined' && !e.isTrusted) return;
+
     // se clicou no próprio botão (verificação por bounding rect é mais confiável que target)
     const btnRectCheck = evasiveBtn.getBoundingClientRect();
     if (clickX >= btnRectCheck.left && clickX <= btnRectCheck.right && clickY >= btnRectCheck.top && clickY <= btnRectCheck.bottom) {
