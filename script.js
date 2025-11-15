@@ -165,8 +165,13 @@ document.addEventListener('mousedown', (e) => {
     // contar apenas cliques de mouse esquerdo
     if (typeof e.button === 'number' && e.button !== 0) return;
 
-    // se clicou no próprio botão (ou em um elemento filho do botão), não conta como falha
-    if (e.target === evasiveBtn || (e.target.closest && e.target.closest('#evasiveBtn'))) return;
+    // se clicou no próprio botão (verificação por bounding rect é mais confiável que target)
+    const btnRectCheck = evasiveBtn.getBoundingClientRect();
+    const clickX = (typeof e.clientX === 'number') ? e.clientX : (e.pageX || 0);
+    const clickY = (typeof e.clientY === 'number') ? e.clientY : (e.pageY || 0);
+    if (clickX >= btnRectCheck.left && clickX <= btnRectCheck.right && clickY >= btnRectCheck.top && clickY <= btnRectCheck.bottom) {
+        return;
+    }
 
     // ignorar cliques em UI/controle (modal, restart, mensagens)
     if (e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
