@@ -120,11 +120,11 @@ evasiveBtn.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
     if (!gameActive) return;
 
-    // se clicou no próprio botão, não conta como falha
-    if (e.target === evasiveBtn) return;
+    // se clicou no próprio botão (ou em um elemento filho do botão), não conta como falha
+    if (e.target === evasiveBtn || (e.target.closest && e.target.closest('#evasiveBtn'))) return;
 
     // ignorar cliques em UI/controle (modal, restart, mensagens)
-    if (e.target.closest && (e.target.closest('.victory-content') || e.target.id === 'restartBtn')) return;
+    if (e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
     if (e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
 
     // é um clique falhado
