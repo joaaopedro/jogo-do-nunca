@@ -422,86 +422,147 @@ window.API_BASE = 'https://jogo-do-nunca-api.onrender.com';
 3. Pressione F1 para ver visitas globais
 4. Pressione Ctrl+F1 com senha `JpGv1209` para resetar
 
-## 🐛 Troubleshooting
+## 🚨 SOLUÇÃO DE PROBLEMAS - 404 no Render
 
-### "Servidor bloqueou requisição (CORS)"
-- Certifique-se que o servidor está rodando no Render
-- Verifique se a URL no `index.html` está correta
-- Aguarde alguns segundos após deploy antes de testar
+Se você está recebendo erro 404 ao acessar o Render, siga estes passos:
 
-### Servidor "dorme" após 15 minutos
-- É normal no plano Free do Render
-- Primeira requisição após sleep leva ~30s para "acordar"
-- Considere plano pago para evitar isso
-
-### Dados perdidos após redeploy
-- O plano Free do Render usa `/tmp` (temporário)
-- Dados são perdidos entre deploys
-- Para persistência permanente, use MongoDB Atlas (grátis)
-
-### Como ver logs do servidor
-1. Acesse o dashboard do Render
-2. Clique no seu Web Service
-3. Vá em "Logs"
-4. Veja erros em tempo real
-
-### Testar localmente antes do deploy
+### 1. Verifique se o deploy foi feito
 ```bash
+# Acesse o dashboard do Render
+https://dashboard.render.com/
+```
+
+- Veja se seu serviço aparece na lista
+- Status deve estar "Live" (verde)
+- Se aparecer "Build Failed" (vermelho), veja os logs
+
+### 2. Verifique a URL correta
+No dashboard do Render, a URL será algo como:
+```
+https://jogo-do-nunca-XXXXX.onrender.com
+```
+(Note o sufixo `-XXXXX` que o Render adiciona automaticamente)
+
+### 3. Teste a API com curl
+```bash
+# Windows PowerShell
+Invoke-WebRequest https://SUA-URL.onrender.com/health
+
+# Ou use o arquivo de teste
+node test-api.js https://SUA-URL.onrender.com
+```
+
+### 4. Atualizar index.html com URL correta
+```javascript
+window.API_BASE = 'https://SUA-URL-CORRETA.onrender.com';
+```
+
+## 🎯 Deploy Passo a Passo Completo
+
+### Passo 1: Preparar repositório
+```bash
+cd c:\Projetos\jogo-do-nunca
+git add .
+git commit -m "feat: prepara deploy"
+git push origin main
+```
+
+### Passo 2: Criar Web Service no Render
+1. Acesse https://render.com/ e faça login
+2. Clique em "New +" → "Web Service"
+3. Escolha "Connect a repository"
+4. Autorize o Render no GitHub
+5. Selecione o repositório `jogo-do-nunca`
+6. Configure:
+   - **Name**: `jogo-do-nunca`
+   - **Region**: `Oregon (US West)` ou mais próximo
+   - **Branch**: `main`
+   - **Root Directory**: (deixe vazio)
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+7. Clique em "Create Web Service"
+
+### Passo 3: Aguardar deploy
+- Primeira vez leva ~2-3 minutos
+- Acompanhe os logs em tempo real
+- Quando aparecer "Live", está pronto!
+
+### Passo 4: Copiar URL e testar
+```bash
+# Copie a URL (ex: https://jogo-do-nunca-abc123.onrender.com)
+# Teste no navegador ou PowerShell:
+
+Invoke-WebRequest https://SUA-URL.onrender.com/health | Select-Object -Expand Content
+```
+
+### Passo 5: Atualizar frontend
+Edite `index.html`:
+```javascript
+window.API_BASE = 'https://jogo-do-nunca-abc123.onrender.com';
+```
+
+Faça commit e push:
+```bash
+git add index.html
+git commit -m "fix: atualiza URL da API para Render"
+git push origin main
+```
+
+## 🧪 Testar localmente ANTES do deploy
+
+```bash
+# Terminal 1: Iniciar servidor local
 npm install
 npm start
-# Servidor em http://localhost:10000
-# Configure index.html: window.API_BASE = 'http://localhost:10000'
+
+# Terminal 2: Testar endpoints
+node test-api.js http://localhost:10000
+
+# Ou manual com curl:
+curl http://localhost:10000/health
+curl -X POST http://localhost:10000/visit
+curl http://localhost:10000/stats
 ```
 
-## 🔐 Segurança
+## 📋 Checklist de Deploy
 
-### Senha de Admin
-- Senha padrão: `JpGv1209`
-- Hash SHA-256: `d23dcd7...`
-- Para mudar: gere novo hash e atualize `script.js` e `server.js`
+- [ ] Código commitado no GitHub
+- [ ] Web Service criado no Render
+- [ ] Build concluído com sucesso (sem erros)
+- [ ] Status "Live" no dashboard
+- [ ] Endpoint `/health` responde 200 OK
+- [ ] URL atualizada no `index.html`
+- [ ] Frontend commitado e publicado
 
-### Gerar novo hash SHA-256:
-```javascript
-// Cole no console do navegador (F12)
-async function gerarHash(senha) {
-    const buf = new TextEncoder().encode(senha);
-    const hash = await crypto.subtle.digest('SHA-256', buf);
-    const hex = Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    console.log('Hash SHA-256:', hex);
-}
-gerarHash('SUA_NOVA_SENHA');
-```
+## 🐛 Erros Comuns
 
-## 📁 Estrutura de Arquivos
+### 404 Not Found
+**Causa**: URL errada ou serviço não deployado
+**Solução**: Verifique a URL no dashboard do Render
 
-```
-jogo-do-nunca/
-├── index.html          # Frontend (GitHub Pages)
-├── style.css           # Estilos
-├── script.js           # Lógica do jogo
-├── imagens/            # GIFs animados
-├── server.js           # Backend API (Render)
-├── package.json        # Dependências Node
-├── render.yaml         # Config automática do Render
-├── .gitignore          # Arquivos ignorados
-└── README.md           # Esta documentação
-```
+### 502 Bad Gateway
+**Causa**: Servidor está "dormindo" (plano Free)
+**Solução**: Aguarde 30s e tente novamente
 
-## 🎮 Como jogar
+### CORS Error
+**Causa**: Servidor configurado incorretamente
+**Solução**: Já está corrigido no `server.js`
 
-1. Digite seu nome
-2. Tente clicar no botão (boa sorte!)
-3. Veja seu tempo no ranking global
+### Build Failed
+**Causa**: Erro no código ou `package.json`
+**Solução**: Veja os logs no Render → "Logs" → últimas linhas
 
-### Easter Eggs 🥚
-- **SHIFT**: Cursor real (sem inversão)
-- **CTRL**: Segura o botão no lugar
-- **F1**: Ouve contador de visitas globais
-- **Ctrl+F1**: Reset do ranking (senha: `JpGv1209`)
-- **#debug**: Adicione na URL para ver logs no console
+## 📞 Suporte
 
-## 📝 Licença
+Se ainda tiver problemas:
+1. Copie os logs do Render
+2. Copie a mensagem de erro completa
+3. Verifique se todos os arquivos foram commitados
 
-MIT
+## 🔗 Links Úteis
+
+- Dashboard Render: https://dashboard.render.com/
+- Docs Render Node: https://render.com/docs/deploy-node-express-app
+- Status Render: https://status.render.com/
