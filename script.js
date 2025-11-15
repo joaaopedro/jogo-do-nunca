@@ -175,98 +175,54 @@ async function fetchGlobalStats() {
     } catch (e) { return null; }
 }
 
-// Reset global do leaderboard no servidor (tenta vários endpoints, métodos e formatos)
+// Reset global do leaderboard no servidor
 async function resetGlobalLeaderboard(passwordHash) {
     if (!API_BASE) {
-        console.log('[RESET] API_BASE não configurado, apenas reset local');
-        return { ok: false, message: 'Servidor não configurado (apenas local)' };
+        console.log('[RESET] API_BASE não configurado');
+        return { ok: false, message: 'Servidor não configurado' };
     }
 
-    const paths = [
-        '/admin/reset-leaderboard',
-        '/admin/reset',
-        '/leaderboard/reset',
-        '/scores/reset',
-        '/score/reset',
-        '/reset-leaderboard',
-        '/reset'
-    ];
-
-    const makeBody = (extra = {}) => JSON.stringify(Object.assign({ 
-        passwordHash, 
-        password: passwordHash, 
-        adminPassword: passwordHash, 
-        action: 'reset' 
-    }, extra));
-
-    const attempts = [];
-    for (const p of paths) {
-        attempts.push({ method: 'POST', path: p, body: makeBody() });
-        attempts.push({ method: 'DELETE', path: p, body: makeBody() });
-    }
-
-    const baseHeaders = Object.assign({ 
-        'Content-Type': 'application/json', 
-        'x-admin-pass-sha256': passwordHash,
-        'x-admin-password': passwordHash 
-    }, buildAuthHeaders());
-    
-    const errors = [];
     const isDebug = window.location && window.location.hash && window.location.hash.indexOf('debug') !== -1;
-    let hasCorsError = false;
-
-    for (const a of attempts) {
-        try {
-            if (isDebug) console.log('[RESET_TRY]', a.method, API_BASE + a.path);
-            
-            const res = await fetch(`${API_BASE}${a.path}`, {
-                method: a.method,
-                headers: baseHeaders,
-                body: a.body,
-                mode: 'cors',
-                credentials: 'include'
-            });
-            
-            if (isDebug) console.log('[RESET_RESPONSE]', a.method, a.path, 'status:', res.status);
-            
-            if (res.ok || res.status === 204) {
-                if (isDebug) console.log('[RESET_SUCCESS]', a.method, a.path);
-                return { ok: true };
-            } else if (res.status === 404) {
-                // 404 é esperado, continua tentando outros endpoints
-                continue;
-            } else {
-                let detail = `HTTP ${res.status}`;
-                try {
-                    const ct = res.headers.get('content-type') || '';
-                    if (ct.includes('application/json')) {
-                        const j = await res.json();
-                        if (j && (j.message || j.error)) detail += ` - ${j.message || j.error}`;
-                    }
-                } catch (_) {}
-                errors.push(detail);
-                if (isDebug) console.log('[RESET_ERROR]', detail);
-            }
-        } catch (err) {
-            if (err.name === 'TypeError' && err.message.toLowerCase().includes('fetch')) {
-                hasCorsError = true;
-                if (isDebug) console.error('[RESET_CORS]', a.method, a.path, err.message);
-            } else {
-                if (isDebug) console.error('[RESET_EXCEPTION]', a.method, a.path, err);
-            }
-        }
-    }
-
-    let finalMsg;
-    if (hasCorsError) {
-        finalMsg = 'Servidor bloqueou a requisição (CORS). Configure o servidor para aceitar requisições do frontend.';
-    } else if (errors.length > 0) {
-        finalMsg = `Endpoint não encontrado ou erro: ${errors[0]}`;
-    } else {
-        finalMsg = 'Nenhum endpoint de reset disponível no servidor.';
-    }
     
-    return { ok: false, message: finalMsg };
+    // No Render, usamos APENAS o endpoint /admin/reset com POST
+    const endpoint = '/admin/reset';
+    const url = `${API_BASE}${endpoint}`;
+    
+    if (isDebug) console.log('[RESET] Tentando:', url);
+    
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-pass-sha256': passwordHash
+            },
+            body: JSON.stringify({ 
+                passwordHash: passwordHash,
+                action: 'reset'
+            })
+        });
+        
+        if (isDebug) console.log('[RESET] Status:', res.status);
+        
+        if (res.ok) {
+            const data = await res.json();
+            if (isDebug) console.log('[RESET] Sucesso:', data);
+            return { ok: true };
+        } else {
+            let errorMsg = `HTTP ${res.status}`;
+            try {
+                const errorData = await res.json();
+                errorMsg = errorData.error || errorData.message || errorMsg;
+            } catch (_) {}
+            if (isDebug) console.log('[RESET] Erro:', errorMsg);
+            return { ok: false, message: errorMsg };
+        }
+    } catch (err) {
+        const msg = err.message || 'Erro de rede';
+        if (isDebug) console.error('[RESET] Exceção:', err);
+        return { ok: false, message: msg };
+    }
 }
 
 // Timer / jogador

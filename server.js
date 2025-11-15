@@ -168,25 +168,29 @@ app.get('/stats', async (req, res) => {
     }
 });
 
-// POST /admin/reset - Resetar leaderboard (múltiplos endpoints)
-const resetHandler = async (req, res) => {
+// POST /admin/reset - Resetar leaderboard (ENDPOINT ÚNICO)
+app.post('/admin/reset', async (req, res) => {
     try {
-        // Verificar senha em múltiplos locais (body, headers, query)
+        console.log('[RESET] Requisição recebida');
+        console.log('[RESET] Headers:', req.headers);
+        console.log('[RESET] Body:', req.body);
+        
+        // Verificar senha em múltiplos locais
         const passwordHash = req.body?.passwordHash 
             || req.body?.password 
-            || req.body?.adminPassword 
             || req.headers['x-admin-pass-sha256']
-            || req.headers['x-admin-password']
-            || req.query.passwordHash
-            || req.query.password;
-        
-        console.log('[RESET] Tentativa de reset recebida');
-        console.log('[RESET] Hash recebido:', passwordHash?.slice(0, 10) + '...');
+            || req.headers['x-admin-password'];
         
         if (!passwordHash) {
             console.log('[RESET] ❌ Senha não fornecida');
-            return res.status(400).json({ error: 'Senha não fornecida' });
+            return res.status(400).json({ 
+                error: 'Senha não fornecida',
+                hint: 'Envie passwordHash no body ou header x-admin-pass-sha256'
+            });
         }
+        
+        console.log('[RESET] Hash recebido:', passwordHash.slice(0, 10) + '...');
+        console.log('[RESET] Hash esperado:', ADMIN_PASSWORD_HASH.slice(0, 10) + '...');
         
         if (passwordHash !== ADMIN_PASSWORD_HASH) {
             console.log('[RESET] ❌ Senha incorreta');
@@ -199,21 +203,17 @@ const resetHandler = async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: 'Leaderboard resetado com sucesso' 
+            message: 'Leaderboard resetado com sucesso',
+            timestamp: new Date().toISOString()
         });
     } catch (err) {
         console.error('[RESET] ❌ Erro:', err);
-        res.status(500).json({ error: 'Erro ao resetar leaderboard' });
+        res.status(500).json({ 
+            error: 'Erro ao resetar leaderboard',
+            message: err.message 
+        });
     }
-};
-
-// Registrar handler em múltiplos endpoints
-app.post('/admin/reset', resetHandler);
-app.delete('/admin/reset', resetHandler);
-app.post('/admin/reset-leaderboard', resetHandler);
-app.delete('/admin/reset-leaderboard', resetHandler);
-app.post('/reset', resetHandler);
-app.delete('/reset', resetHandler);
+});
 
 // Tratamento de erros global
 app.use((err, req, res, next) => {

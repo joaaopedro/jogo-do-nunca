@@ -338,120 +338,169 @@ Divirta-se!
 
 Jogo interativo onde você tenta clicar em um botão impossível!
 
+## 🌐 Endpoints da API (Render)
+
+Quando você fizer deploy no Render, sua API estará disponível em:
+`https://seu-app.onrender.com`
+
+### Endpoints disponíveis:
+
+```
+GET  /                  - Informações da API
+GET  /health            - Health check
+POST /visit             - Registrar visita
+POST /score             - Enviar score
+GET  /stats             - Estatísticas globais
+POST /admin/reset       - Resetar leaderboard (requer senha)
+```
+
+### Como testar os endpoints:
+
+#### 1. Health Check
+```bash
+curl https://seu-app.onrender.com/health
+```
+
+#### 2. Enviar Score
+```bash
+curl -X POST https://seu-app.onrender.com/score \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jogador Teste","timeMs":12345}'
+```
+
+#### 3. Ver Estatísticas
+```bash
+curl https://seu-app.onrender.com/stats
+```
+
+#### 4. Resetar Leaderboard (Admin)
+```bash
+curl -X POST https://seu-app.onrender.com/admin/reset \
+  -H "Content-Type: application/json" \
+  -H "x-admin-pass-sha256: d23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7" \
+  -d '{"passwordHash":"d23dcd7dbb2f39d93e9014b53d9632ae718cd17ecabbf8a43748e35860005cc7"}'
+```
+
 ## 🚀 Deploy no Render
 
-### 1. Criar conta no Render
-- Acesse: https://render.com/
-- Crie uma conta gratuita
-- Conecte com GitHub
+### Passo a passo completo:
 
-### 2. Fazer Deploy
-1. Faça push do código para o GitHub:
+#### 1. Preparar o código
 ```bash
+cd c:\Projetos\jogo-do-nunca
 git add .
-git commit -m "feat: configura deploy no Render"
+git commit -m "feat: configura API para Render"
 git push origin main
 ```
 
-2. No Render Dashboard:
-   - Clique em "New +"
-   - Escolha "Web Service"
-   - Conecte seu repositório GitHub
-   - Configure:
-     - **Name**: `jogo-do-nunca-api`
-     - **Environment**: `Node`
-     - **Build Command**: `npm install`
-     - **Start Command**: `npm start`
-     - **Plan**: `Free`
+#### 2. Criar Web Service no Render
+1. Acesse https://render.com/
+2. Clique em "New +" → "Web Service"
+3. Conecte seu repositório GitHub
+4. Configure:
+   - **Name**: `jogo-do-nunca-api` (ou qualquer nome)
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+5. Clique em "Create Web Service"
 
-3. Clique em "Create Web Service"
+#### 3. Aguardar deploy
+- O primeiro deploy leva ~2-3 minutos
+- Acompanhe os logs no dashboard
+- Quando aparecer "Live", copie a URL
 
-4. Copie a URL gerada (ex: `https://jogo-do-nunca-api.onrender.com`)
-
-### 3. Configurar Frontend
-Edite `index.html` e altere:
+#### 4. Configurar frontend
+Edite `index.html` e cole sua URL do Render:
 ```javascript
 window.API_BASE = 'https://jogo-do-nunca-api.onrender.com';
 ```
 
-### 4. Deploy do Frontend (GitHub Pages)
-```bash
-# Habilite GitHub Pages nas configurações do repositório
-# Branch: main, Folder: / (root)
-```
+#### 5. Testar
+1. Abra o jogo localmente
+2. Jogue e veja se o score é salvo
+3. Pressione F1 para ver visitas globais
+4. Pressione Ctrl+F1 com senha `JpGv1209` para resetar
 
-Pronto! Seu jogo estará online em:
-- Frontend: `https://seu-usuario.github.io/jogo-do-nunca/`
-- Backend: `https://jogo-do-nunca-api.onrender.com`
+## 🐛 Troubleshooting
 
-## 🎮 Como jogar localmente
+### "Servidor bloqueou requisição (CORS)"
+- Certifique-se que o servidor está rodando no Render
+- Verifique se a URL no `index.html` está correta
+- Aguarde alguns segundos após deploy antes de testar
 
-### Frontend
-1. Abra `index.html` no navegador
-2. Ou use Python: `python -m http.server 8000`
-3. Ou Live Server do VS Code
+### Servidor "dorme" após 15 minutos
+- É normal no plano Free do Render
+- Primeira requisição após sleep leva ~30s para "acordar"
+- Considere plano pago para evitar isso
 
-### Backend (opcional para desenvolvimento)
+### Dados perdidos após redeploy
+- O plano Free do Render usa `/tmp` (temporário)
+- Dados são perdidos entre deploys
+- Para persistência permanente, use MongoDB Atlas (grátis)
+
+### Como ver logs do servidor
+1. Acesse o dashboard do Render
+2. Clique no seu Web Service
+3. Vá em "Logs"
+4. Veja erros em tempo real
+
+### Testar localmente antes do deploy
 ```bash
 npm install
 npm start
 # Servidor em http://localhost:10000
+# Configure index.html: window.API_BASE = 'http://localhost:10000'
 ```
 
-## 🔑 Recursos
+## 🔐 Segurança
 
-- ✅ Ranking local (funciona offline)
-- ✅ Ranking global (Render + GitHub Pages)
-- ✅ Contador de visitas global
-- ✅ Reset de ranking com senha (Ctrl+F1)
-- ✅ Suporte touch/mouse/caneta
-- ✅ Cursor invertido e botão evasivo
-- ✅ GIFs animados
+### Senha de Admin
+- Senha padrão: `JpGv1209`
+- Hash SHA-256: `d23dcd7...`
+- Para mudar: gere novo hash e atualize `script.js` e `server.js`
 
-## 🔐 Admin
+### Gerar novo hash SHA-256:
+```javascript
+// Cole no console do navegador (F12)
+async function gerarHash(senha) {
+    const buf = new TextEncoder().encode(senha);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    console.log('Hash SHA-256:', hex);
+}
+gerarHash('SUA_NOVA_SENHA');
+```
 
-- **Reset**: `Ctrl+F1` → senha: `JpGv1209`
-- Reseta ranking local e global
-
-## 📁 Estrutura
+## 📁 Estrutura de Arquivos
 
 ```
 jogo-do-nunca/
-├── index.html          # Frontend
+├── index.html          # Frontend (GitHub Pages)
 ├── style.css           # Estilos
-├── script.js           # Lógica
-├── imagens/            # GIFs
-├── server.js           # Backend API
-├── package.json        # Dependências
-├── render.yaml         # Config Render
-└── README.md           # Este arquivo
+├── script.js           # Lógica do jogo
+├── imagens/            # GIFs animados
+├── server.js           # Backend API (Render)
+├── package.json        # Dependências Node
+├── render.yaml         # Config automática do Render
+├── .gitignore          # Arquivos ignorados
+└── README.md           # Esta documentação
 ```
 
-## 🌐 Endpoints da API
+## 🎮 Como jogar
 
-- `GET /` - Informações da API
-- `GET /health` - Health check
-- `POST /visit` - Registrar visita
-- `POST /score` - Enviar score
-  ```json
-  { "name": "Jogador", "timeMs": 12345 }
-  ```
-- `GET /stats` - Estatísticas
-- `POST /admin/reset` - Reset (requer senha SHA-256)
+1. Digite seu nome
+2. Tente clicar no botão (boa sorte!)
+3. Veja seu tempo no ranking global
 
-## 🐛 Troubleshooting
-
-### Render dorme após 15min de inatividade
-- Primeira requisição após sleep leva ~30s
-- É normal no plano Free
-
-### CORS Error
-- Certifique-se que a URL da API está correta no `index.html`
-- O Render deve estar online (verifique o dashboard)
-
-### Dados perdidos no Render
-- O plano Free não persiste dados entre deploys
-- Para persistência permanente, use um banco de dados (ex: MongoDB Atlas)
+### Easter Eggs 🥚
+- **SHIFT**: Cursor real (sem inversão)
+- **CTRL**: Segura o botão no lugar
+- **F1**: Ouve contador de visitas globais
+- **Ctrl+F1**: Reset do ranking (senha: `JpGv1209`)
+- **#debug**: Adicione na URL para ver logs no console
 
 ## 📝 Licença
 
