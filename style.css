@@ -19,6 +19,12 @@ body {
     -ms-user-select: none;
 }
 
+/* Mostrar cursor quando não está no jogo */
+body.show-menu,
+body.show-ranking {
+    cursor: auto;
+}
+
 body.show-victory {
     cursor: auto;
 }

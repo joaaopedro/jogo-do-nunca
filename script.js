@@ -23,6 +23,10 @@ function showPage(pageKey) {
     if (pages[pageKey]) {
         pages[pageKey].classList.add('show');
     }
+    
+    // Atualizar classe do body para mostrar/ocultar cursor
+    document.body.classList.remove('show-menu', 'show-game', 'show-ranking');
+    document.body.classList.add(`show-${pageKey}`);
 }
 
 // Botões de navegação
@@ -45,6 +49,18 @@ if (leaderboardMenuBtn) leaderboardMenuBtn.addEventListener('click', () => {
 
 if (backToMenuBtn) backToMenuBtn.addEventListener('click', () => {
     showPage('menu');
+});
+
+// ===== HANDLER PARA ESC =====
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const nameModal = document.getElementById('nameModal');
+        if (nameModal && nameModal.classList.contains('show')) {
+            // Fechar modal de nome
+            nameModal.classList.remove('show');
+            showPage('menu');
+        }
+    }
 });
 
 let realMouseX = 0;
