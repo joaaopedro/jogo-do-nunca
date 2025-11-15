@@ -338,23 +338,55 @@ Divirta-se!
 
 Jogo interativo onde você tenta clicar em um botão impossível!
 
-## 🚀 Como rodar
+## 🚀 Como rodar (SEM servidor)
 
-### Frontend (cliente)
-1. Abra `index.html` no navegador
-2. Ou use um servidor local: `npx serve .`
+### Opção 1: Apenas Local (sem ranking global)
+1. Abra `index.html` diretamente no navegador
+2. O jogo funciona completamente offline
+3. Rankings ficam salvos apenas no seu navegador
 
-### Backend (servidor)
-1. Instale as dependências: `npm install`
-2. Inicie o servidor: `npm start`
-3. Ou modo desenvolvimento: `npm run dev`
+### Opção 2: Com servidor local simples
+Use Python (já vem instalado no Windows 10/11):
+```bash
+cd c:\Projetos\jogo-do-nunca
+python -m http.server 8000
+```
+Depois abra: `http://localhost:8000`
+
+### Opção 3: Live Server (VS Code)
+1. Instale a extensão "Live Server" no VS Code
+2. Clique com botão direito em `index.html`
+3. Escolha "Open with Live Server"
+
+## 🌐 Para ranking global (opcional)
+
+Se você quiser ranking compartilhado entre usuários:
+
+### Instalar Node.js
+1. Baixe em: https://nodejs.org/
+2. Instale a versão LTS
+3. Reinicie o terminal
+
+### Depois da instalação:
+```bash
+cd c:\Projetos\jogo-do-nunca
+npm install
+npm start
+```
 
 O servidor rodará em `http://localhost:3000`
 
+### Configurar frontend:
+No arquivo `index.html`, descomente e ajuste:
+```javascript
+window.API_BASE = 'http://localhost:3000';
+```
+
 ## 🔑 Recursos
 
-- ✅ Sistema de ranking local e global
-- ✅ Contador de visitas global
+- ✅ Sistema de ranking local (sempre funciona)
+- ✅ Sistema de ranking global (requer servidor Node.js)
+- ✅ Contador de visitas global (opcional)
 - ✅ Reset de ranking com senha (Ctrl+F1)
 - ✅ Suporte a touch/mouse/caneta
 - ✅ Cursor invertido e botão evasivo
@@ -364,25 +396,37 @@ O servidor rodará em `http://localhost:3000`
 
 - **Reset do ranking**: Pressione `Ctrl+F1` e digite a senha
 - Senha padrão: `JpGv1209`
+- Reseta o ranking local sempre (funciona offline)
+- Reseta o ranking global se servidor estiver configurado
 
 ## 📁 Estrutura
 
 ```
 jogo-do-nunca/
-├── index.html          # Frontend
+├── index.html          # Frontend (funciona sozinho)
 ├── style.css           # Estilos
 ├── script.js           # Lógica do jogo
-├── server.js           # Backend API
-├── package.json        # Dependências Node
-├── .env                # Configurações (não versionado)
-└── data/               # Dados salvos (não versionado)
-    ├── leaderboard.json
-    └── visits.json
+├── imagens/            # GIFs animados
+├── server.js           # Backend API (OPCIONAL)
+├── package.json        # Dependências Node (OPCIONAL)
+└── .env                # Configurações (OPCIONAL)
 ```
 
-## 🌐 Deploy
+## 🎮 Como jogar
 
-Para produção, altere em `index.html`:
-```javascript
-window.API_BASE = 'https://seu-servidor.com';
-```
+1. Clique em "Jogar"
+2. Digite seu nome
+3. Tente clicar no botão (boa sorte!)
+4. Veja seu tempo no ranking
+
+### Easter Eggs 🥚
+- **SHIFT**: Mostra cursor real (tira inversão)
+- **CTRL**: Segura o botão no lugar
+- **F1**: Ouve quantas pessoas já visitaram (requer servidor)
+- **CTRL+F1**: Reset do ranking (requer senha de admin)
+
+## 📝 Notas
+
+- O jogo funciona 100% sem servidor (ranking fica só local)
+- Para ranking global compartilhado, precisa do servidor Node.js
+- Todos os dados locais ficam salvos no localStorage do navegador
