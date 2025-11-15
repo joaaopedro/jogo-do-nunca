@@ -68,6 +68,13 @@ const leaderboardEl = document.getElementById('leaderboard');
 const bgCatcher = document.getElementById('bgCatcher');
 const liveTimer = document.getElementById('liveTimer');
 
+// Elementos do modal de leaderboard
+const leaderboardModal = document.getElementById('leaderboardModal');
+const leaderboardList = document.getElementById('leaderboardList');
+const viewLeaderboardBtn = document.getElementById('viewLeaderboardBtn');
+const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+const backLeaderboardBtn = document.getElementById('backLeaderboardBtn');
+
 // API base (defina window.API_BASE = 'https://seu-servidor' em index.html se quiser usar o servidor)
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE.replace(/\/$/, '') : '';
 
@@ -179,16 +186,31 @@ if (startGameBtn) startGameBtn.addEventListener('click', () => {
 });
 
 // View Leaderboard button handler
-const viewLeaderboardBtn = document.getElementById('viewLeaderboardBtn');
 if (viewLeaderboardBtn) viewLeaderboardBtn.addEventListener('click', () => {
-    // Mostrar o leaderboard em um modal/alert simples
     const entries = loadLeaderboard();
     if (!entries || entries.length === 0) {
-        alert('📊 TOP 10\n\nNenhum resultado ainda — seja o primeiro!');
-        return;
+        leaderboardList.innerHTML = '<div class="empty-state">📊 Nenhum resultado ainda — seja o primeiro!</div>';
+    } else {
+        const html = entries.map((e, i) => {
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+            return `<div class="entry">
+                <span class="entry-rank">${medal || '#' + (i+1)}</span>
+                <span class="entry-name">${escapeHtml(e.name)}</span>
+                <span class="entry-time">${formatTime(e.timeMs)}</span>
+            </div>`;
+        }).join('');
+        leaderboardList.innerHTML = html;
     }
-    const leaderboardText = entries.map((e, i) => `#${i+1} ${escapeHtml(e.name)} - ${formatTime(e.timeMs)}`).join('\n');
-    alert(`📊 TOP 10\n\n${leaderboardText}`);
+    leaderboardModal.classList.add('show');
+});
+
+// Close leaderboard modal
+if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', () => {
+    leaderboardModal.classList.remove('show');
+});
+
+if (backLeaderboardBtn) backLeaderboardBtn.addEventListener('click', () => {
+    leaderboardModal.classList.remove('show');
 });
 
 // Auto-focus input and prefill last name

@@ -43,10 +43,20 @@
             <h2>Pronto para jogar?</h2>
             <p>Digite seu nome para começar o desafio:</p>
             <input id="playerNameInput" type="text" placeholder="Seu nome" maxlength="24" />
-            <div class="start-buttons">
-                <button id="startGameBtn" class="start-btn">INICIAR</button>
-                <button id="viewLeaderboardBtn" class="start-btn secondary">VER TOP 10</button>
+            <button id="startGameBtn" class="start-btn primary">INICIAR</button>
+            <button id="viewLeaderboardBtn" class="start-btn secondary">VER TOP 10</button>
+        </div>
+    </div>
+
+    <!-- Modal para exibir Top 10 -->
+    <div id="leaderboardModal" class="leaderboard-modal">
+        <div class="leaderboard-content">
+            <div class="leaderboard-header">
+                <h2>🏆 TOP 10</h2>
+                <button id="closeLeaderboardBtn" class="close-btn">&times;</button>
             </div>
+            <div id="leaderboardList" class="leaderboard-list"></div>
+            <button id="backLeaderboardBtn" class="back-btn">VOLTAR</button>
         </div>
     </div>
 
