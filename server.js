@@ -31,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 // Confiar no proxy do Render e responder preflight CORS
 app.set('trust proxy', 1);
 app.options('*', cors(corsOptions));
+// Preflight específico para rotas usadas pelo frontend
+app.options(['/visit', '/visit/', '/score', '/score/', '/admin/reset', '/admin/reset/'], (req, res) => res.sendStatus(204));
 
 // Middleware para logs detalhados
 app.use((req, res, next) => {
@@ -154,7 +156,7 @@ app.get(['/health', '/health/', '/healthz', '/healthcheck'], healthHandler);
 app.head('/health', (_req, res) => res.sendStatus(200));
 
 // POST /visit - Registrar visita
-app.post('/visit', async (req, res) => {
+app.post(['/visit', '/visit/'], async (req, res) => {
     try {
         const visits = await loadVisits();
         visits.count++;
@@ -174,7 +176,7 @@ app.post('/visit', async (req, res) => {
 });
 
 // GET /visit - Consultar visitas (sem incrementar)
-app.get('/visit', async (req, res) => {
+app.get(['/visit', '/visit/'], async (req, res) => {
     try {
         const visits = await loadVisits();
         res.json({ success: true, visits: visits.count });
@@ -184,7 +186,7 @@ app.get('/visit', async (req, res) => {
 });
 
 // POST /score - Enviar score
-app.post('/score', async (req, res) => {
+app.post(['/score', '/score/'], async (req, res) => {
     try {
         const { name, timeMs } = req.body;
         
@@ -250,7 +252,7 @@ app.get(['/stats', '/stats/'], async (req, res) => {
 });
 
 // POST /admin/reset - Resetar leaderboard
-app.post('/admin/reset', async (req, res) => {
+app.post(['/admin/reset', '/admin/reset/'], async (req, res) => {
     try {
         console.log('🔐 [RESET] Tentativa de reset recebida');
         console.log('🔐 [RESET] Headers:', JSON.stringify(req.headers, null, 2));

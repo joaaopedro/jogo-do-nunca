@@ -143,14 +143,40 @@ function buildAuthHeaders() {
     return headers;
 }
 
+// Aquece o servidor do Render (evita 404/timeout quando está "cold")
+async function wakeServer() {
+    if (!API_BASE) return;
+    try {
+        await fetch(`${API_BASE}/health`, { method: 'GET' });
+    } catch (_) { /* ignore */ }
+}
+
+// Registra a visita com tentativas e fallback (POST/GET e barra final)
 async function sendVisitToServer() {
     if (!API_BASE) return null;
+    const isDebug = typeof window !== 'undefined' && window.location && window.location.hash.includes('debug');
     try {
-        const res = await fetch(`${API_BASE}/visit`, { method: 'POST', headers: buildAuthHeaders() });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.visits;
-    } catch (e) { return null; }
+        await wakeServer();
+        const attempts = [
+            { method: 'POST', path: '/visit' },
+            { method: 'POST', path: '/visit/' },
+            { method: 'GET',  path: '/visit' },
+            { method: 'GET',  path: '/visit/' }
+        ];
+        for (const a of attempts) {
+            try {
+                const res = await fetch(`${API_BASE}${a.path}`, { method: a.method, headers: buildAuthHeaders() });
+                if (isDebug) console.debug('[VISIT]', a.method, a.path, '->', res.status);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.visits ?? null;
+                }
+            } catch (err) {
+                if (isDebug) console.debug('[VISIT_ERR]', a.method, a.path, err && err.message);
+            }
+        }
+        return null;
+    } catch (_) { return null; }
 }
 
 async function sendScoreToServer(name, timeMs) {
