@@ -45,10 +45,12 @@ const floatingMessages = [
     'Tá bravinho? Respira, tenta outra vez, guerreiro.',
 ];
 
-// GIFs na pasta imagens (ex: imagens/risos.gif, imagens/triste.gif)
+// GIFs na pasta imagens — atualizados para os nomes presentes no projeto
 const gifFiles = [
-    './imagens/risos.gif',
-    './imagens/triste.gif'
+    'imagens/risos1.gif',
+    'imagens/risos2.gif',
+    'imagens/triste1.gif',
+    'imagens/triste2.gif'
 ];
 
 /** Spawnar um GIF em um canto aleatório por um curto período */
@@ -155,9 +157,13 @@ evasiveBtn.addEventListener('click', (e) => {
     }
 });
 
-// Contar apenas cliques falhados (quando o usuário clica em outro lugar que não seja o botão)
-document.addEventListener('click', (e) => {
+// Contar apenas cliques falhados do mouse (quando o usuário clica em outro lugar que não seja o botão)
+// Usamos 'mousedown' e verificamos event.button === 0 (botão esquerdo do mouse)
+document.addEventListener('mousedown', (e) => {
     if (!gameActive) return;
+
+    // contar apenas cliques de mouse esquerdo
+    if (typeof e.button === 'number' && e.button !== 0) return;
 
     // se clicou no próprio botão (ou em um elemento filho do botão), não conta como falha
     if (e.target === evasiveBtn || (e.target.closest && e.target.closest('#evasiveBtn'))) return;
@@ -166,7 +172,7 @@ document.addEventListener('click', (e) => {
     if (e.target.closest && (e.target.closest('.victory-content') || e.target.closest('#restartBtn'))) return;
     if (e.target.classList && (e.target.classList.contains('troll-message') || e.target.classList.contains('floating-text') || e.target.id === 'fakeCursor')) return;
 
-    // é um clique falhado
+    // é um clique falhado do mouse
     failCount++;
     failCountDisplay.textContent = failCount;
 
@@ -178,6 +184,7 @@ document.addEventListener('click', (e) => {
         evasiveBtn.classList.add('glitch');
         setTimeout(() => evasiveBtn.classList.remove('glitch'), 500);
     }
+
     // spawn pequeno de GIFs em cantos quando houver falhas
     if (Math.random() < Math.min(0.12 + failCount * 0.01, 0.5)) {
         spawnCornerGif();
